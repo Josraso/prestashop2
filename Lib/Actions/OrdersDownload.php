@@ -3,7 +3,6 @@
 namespace FacturaScripts\Plugins\Prestashop\Lib\Actions;
 
 use FacturaScripts\Core\Tools;
-use FacturaScripts\Core\Lib\Calculator;
 use FacturaScripts\Dinamic\Model\AlbaranCliente;
 use FacturaScripts\Dinamic\Model\Cliente;
 use FacturaScripts\Dinamic\Model\LineaAlbaranCliente;
@@ -477,17 +476,8 @@ class OrdersDownload
             $this->addDiscountLine($albaran, $totalDiscountWithTax, $discountName, $ivaTransporteDescuento);
         }
 
-        // NUEVO (2025): Usar Calculator::calculate() para recalcular totales del documento
-        // Esto reemplaza calculateTotals() manual que causaba errores de validación
-
-        // === CÓDIGO ANTIGUO (comentado) ===
-        // $this->calculateTotals($albaran);
-
-        // === CÓDIGO NUEVO ===
-        // Calculator::calculate() recalcula TODOS los totales del albarán desde las líneas
-        // Esto asegura que neto, totaliva y total sean correctos y pasen la validación
-        $lineas = $albaran->getLines();
-        Calculator::calculate($albaran, $lineas, true);
+        // Calcular y asignar totales manualmente
+        $this->calculateTotals($albaran);
 
         Tools::log()->info("========================================");
         Tools::log()->info("✓ ALBARÁN CREADO: {$albaran->codigo}");
@@ -870,14 +860,6 @@ class OrdersDownload
         $taxRate = $product['tax_rate'] ?? 21;
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($taxRate);
 
-        // ============================================================================
-        // NUEVO (2025): Usar Calculator de FacturaScripts para cálculo automático
-        // Esto resuelve: IVA 0% mal calculado, totales sin calcular, validación fallida
-        // Para REVERTIR: descomentar "CÓDIGO ANTIGUO" y eliminar "CÓDIGO NUEVO"
-        // ============================================================================
-
-        // === CÓDIGO ANTIGUO (comentado - funcionaba pero tenía problemas de validación) ===
-        /*
         if ($codimpuesto) {
             // Mapeo encontrado: usar el codimpuesto mapeado
             $linea->codimpuesto = $codimpuesto;
@@ -898,29 +880,6 @@ class OrdersDownload
         $linea->recargo = 0;
 
         $linea->save();
-        */
-
-        // === CÓDIGO NUEVO (usa Calculator de FacturaScripts) ===
-        if ($codimpuesto) {
-            // Mapeo encontrado: asignar codimpuesto
-            $linea->codimpuesto = $codimpuesto;
-        } else {
-            // Sin mapeo: advertir (Calculator usará IVA por defecto)
-            Tools::log()->warning("⚠ IVA {$taxRate}% sin mapear para producto {$referencia}. Configura el mapeo de IVA en Prestashop → Mapeo de Tipos de IVA");
-            // Asignar IVA manualmente si no hay mapeo
-            $linea->iva = $taxRate;
-        }
-
-        // NO hay recargo de equivalencia
-        $linea->recargo = 0;
-
-        // CRÍTICO: Usar Calculator de FacturaScripts para calcular IVA y totales correctamente
-        // Esto calcula automáticamente: iva (desde codimpuesto), pvptotal, con descuentos aplicados
-        Calculator::calculateLine($albaran, $linea);
-
-        // Guardar línea con totales ya calculados
-        $linea->save();
-        // ============================================================================
 
         // LOG DETALLADO para debug
         $precioConIva = round($linea->pvpunitario * (1 + $linea->iva / 100), 2);
@@ -1099,11 +1058,6 @@ class OrdersDownload
 
         // Asignar codimpuesto correcto para el transporte
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaTransporte);
-
-        // NUEVO (2025): Usar Calculator de FacturaScripts - Para revertir: descomentar código antiguo
-
-        // === CÓDIGO ANTIGUO (comentado) ===
-        /*
         if ($codimpuesto) {
             $linea->codimpuesto = $codimpuesto;
             $linea->iva = $ivaTransporte;
@@ -1119,21 +1073,6 @@ class OrdersDownload
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
 
-        $linea->save();
-        */
-
-        // === CÓDIGO NUEVO ===
-        if ($codimpuesto) {
-            $linea->codimpuesto = $codimpuesto;
-        } else {
-            $linea->iva = $ivaTransporte;
-            Tools::log()->warning("⚠ IVA {$ivaTransporte}% sin mapear para transporte. Configura el mapeo de IVA.");
-        }
-
-        $linea->recargo = 0;
-
-        // Calculator calcula IVA y pvptotal automáticamente
-        Calculator::calculateLine($albaran, $linea);
         $linea->save();
 
         Tools::log()->info("✓ ENVÍO → Con IVA: {$shippingCostWithTax}€ | Sin IVA: {$linea->pvpunitario}€ | IVA: {$ivaTransporte}%");
@@ -1173,11 +1112,6 @@ class OrdersDownload
 
         // Asignar codimpuesto correcto para el empaquetado
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaRegalo);
-
-        // NUEVO (2025): Usar Calculator de FacturaScripts - Para revertir: descomentar código antiguo
-
-        // === CÓDIGO ANTIGUO (comentado) ===
-        /*
         if ($codimpuesto) {
             $linea->codimpuesto = $codimpuesto;
             $linea->iva = $ivaRegalo;
@@ -1193,21 +1127,6 @@ class OrdersDownload
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
 
-        $linea->save();
-        */
-
-        // === CÓDIGO NUEVO ===
-        if ($codimpuesto) {
-            $linea->codimpuesto = $codimpuesto;
-        } else {
-            $linea->iva = $ivaRegalo;
-            Tools::log()->warning("⚠ IVA {$ivaRegalo}% sin mapear para empaquetado. Configura el mapeo de IVA.");
-        }
-
-        $linea->recargo = 0;
-
-        // Calculator calcula IVA y pvptotal automáticamente
-        Calculator::calculateLine($albaran, $linea);
         $linea->save();
 
         Tools::log()->info("✓ REGALO → Con IVA: {$wrappingCostWithTax}€ | Sin IVA: {$linea->pvpunitario}€ | IVA: {$ivaRegalo}%");
@@ -1239,11 +1158,6 @@ class OrdersDownload
 
         // Asignar IVA según el pedido
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaDescuento);
-
-        // NUEVO (2025): Usar Calculator de FacturaScripts - Para revertir: descomentar código antiguo
-
-        // === CÓDIGO ANTIGUO (comentado) ===
-        /*
         if ($codimpuesto) {
             $linea->codimpuesto = $codimpuesto;
             $linea->iva = $ivaDescuento;
@@ -1259,21 +1173,6 @@ class OrdersDownload
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
 
-        $linea->save();
-        */
-
-        // === CÓDIGO NUEVO ===
-        if ($codimpuesto) {
-            $linea->codimpuesto = $codimpuesto;
-        } else {
-            $linea->iva = $ivaDescuento;
-            Tools::log()->warning("⚠ IVA {$ivaDescuento}% sin mapear para descuento. Configura el mapeo de IVA.");
-        }
-
-        $linea->recargo = 0;
-
-        // Calculator calcula IVA y pvptotal automáticamente
-        Calculator::calculateLine($albaran, $linea);
         $linea->save();
 
         Tools::log()->info("✓ DESCUENTO → '{$linea->descripcion}': Con IVA: -{$discountWithTax}€ | Sin IVA: {$linea->pvpunitario}€ | IVA: {$ivaDescuento}%");
