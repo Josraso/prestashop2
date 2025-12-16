@@ -3,7 +3,7 @@
 namespace FacturaScripts\Plugins\Prestashop\Lib\Actions;
 
 use FacturaScripts\Core\Tools;
-use FacturaScripts\Core\Lib\BusinessDocumentCalculator as Calculator;
+use FacturaScripts\Core\Lib\Calculator;
 use FacturaScripts\Dinamic\Model\AlbaranCliente;
 use FacturaScripts\Dinamic\Model\Cliente;
 use FacturaScripts\Dinamic\Model\LineaAlbaranCliente;
