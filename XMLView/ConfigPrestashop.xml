@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<view>
+    <columns>
+        <group name="general" title="Configuración General" icon="fas fa-cog">
+            <column name="shop_url" title="URL de la tienda" description="URL completa de tu tienda PrestaShop (ej: https://mitienda.com)">
+                <widget type="text" fieldname="shop_url" required="true" />
+            </column>
+            <column name="api_key" title="API Key" description="Clave API del Webservice de PrestaShop">
+                <widget type="text" fieldname="api_key" required="true" />
+            </column>
+            <column name="activo" title="Activo">
+                <widget type="checkbox" fieldname="activo" />
+            </column>
+        </group>
+
+        <group name="facturascripts" title="Configuración FacturaScripts" icon="fas fa-file-invoice">
+            <column name="codalmacen" title="Almacén" description="Almacén donde se crearán los albaranes">
+                <widget type="select" fieldname="codalmacen" required="true">
+                    <values source="almacenes" fieldcode="codalmacen" fieldtitle="nombre" />
+                </widget>
+            </column>
+            <column name="codserie" title="Serie" description="Serie para los albaranes importados">
+                <widget type="select" fieldname="codserie" required="true">
+                    <values source="series" fieldcode="codserie" fieldtitle="descripcion" />
+                </widget>
+            </column>
+        </group>
+
+        <group name="estados" title="Estados de Pedidos a Importar" icon="fas fa-list-check">
+            <column name="info" title="">
+                <widget type="html">
+                    <html><![CDATA[
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            Selecciona los estados de pedidos de PrestaShop que deseas importar como albaranes.
+                            El número de pedido de PrestaShop se guardará en el campo "Número 2" del albarán.
+                        </div>
+                    ]]></html>
+                </widget>
+            </column>
+        </group>
+
+        <group name="importacion" title="Configuración de Importación" icon="fas fa-download">
+            <column name="import_since_id" title="Importar desde ID" description="Solo importar pedidos con ID mayor o igual a este valor (solo afecta al cron automático, no a la importación manual). Dejar en 0 para importar todos los pedidos.">
+                <widget type="number" fieldname="import_since_id" min="0" />
+            </column>
+            <column name="ultima_importacion" title="Última importación" display="right" readonly="true">
+                <widget type="text" fieldname="ultima_importacion" readonly="true" />
+            </column>
+        </group>
+
+        <group name="logs" title="Log de Errores de Importación" icon="fas fa-exclamation-triangle">
+            <column name="log_info" title="">
+                <widget type="html">
+                    <html><![CDATA[
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle"></i>
+                            Los errores durante la importación automática (cron) se guardan en:
+                            <strong>MyFiles/Logs/prestashop_import_errors.log</strong>
+                        </div>
+                    ]]></html>
+                </widget>
+            </column>
+        </group>
+    </columns>
+
+    <rows>
+        <row type="actions">
+            <button type="action" icon="fas fa-save" label="Guardar" action="save" color="primary" />
+            <button type="action" icon="fas fa-plug" label="Probar Conexión" action="test" color="info" />
+            <button type="action" icon="fas fa-sync" label="Cargar Estados" action="load-states" color="secondary" />
+        </row>
+    </rows>
+</view>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Tabla para registrar webhooks recibidos desde PrestaShop
+-->
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>fecha</name>
+        <type>timestamp</type>
+        <null>NO</null>
+        <default>CURRENT_TIMESTAMP</default>
+    </column>
+    <column>
+        <name>ip</name>
+        <type>character varying(45)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>metodo</name>
+        <type>character varying(10)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>payload</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>token_valido</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>false</default>
+    </column>
+    <column>
+        <name>order_id</name>
+        <type>integer</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>procesado</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>false</default>
+    </column>
+    <column>
+        <name>resultado</name>
+        <type>character varying(20)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>mensaje</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <constraint>
+        <name>prestashop_webhook_log_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+</table>

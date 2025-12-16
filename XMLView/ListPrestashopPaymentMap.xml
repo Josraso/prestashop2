@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document   : ListPrestashopPaymentMap.xml
+    Description:
+        Vista de listado para mapeos de formas de pago
+-->
+<view>
+    <columns>
+        <column name="payment_module" display="left" order="100" title="metodo-pago-prestashop">
+            <widget type="text" fieldname="payment_module" />
+        </column>
+        <column name="nombre_prestashop" display="left" order="110" title="nombre-descriptivo">
+            <widget type="text" fieldname="nombre_prestashop" />
+        </column>
+        <column name="codpago" display="left" order="120" title="forma-pago-facturascripts">
+            <widget type="text" fieldname="codpago" />
+        </column>
+    </columns>
+</view>

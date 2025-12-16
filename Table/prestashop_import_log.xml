@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Tabla para registrar el historial de importaciones de PrestaShop
+-->
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>fecha</name>
+        <type>date</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>hora</name>
+        <type>time</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>order_id</name>
+        <type>integer</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>order_reference</name>
+        <type>character varying(50)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>idalbaran</name>
+        <type>integer</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>codcliente</name>
+        <type>character varying(10)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>nombrecliente</name>
+        <type>character varying(100)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>total</name>
+        <type>double precision</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>tipo</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+        <default>'order'</default>
+    </column>
+    <column>
+        <name>resultado</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>mensaje</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>origen</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+        <default>'cron'</default>
+    </column>
+    <constraint>
+        <name>prestashop_import_log_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+</table>

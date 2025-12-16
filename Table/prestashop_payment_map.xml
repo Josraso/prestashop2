@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document   : prestashop_payment_map.xml
+    Description:
+        Estructura de la tabla prestashop_payment_map para mapear formas de pago
+        de PrestaShop con las de FacturaScripts.
+-->
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>payment_module</name>
+        <type>character varying(100)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>nombre_prestashop</name>
+        <type>character varying(200)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>codpago</name>
+        <type>character varying(10)</type>
+        <null>NO</null>
+    </column>
+    <constraint>
+        <name>prestashop_payment_map_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+    <constraint>
+        <name>uniq_payment_module</name>
+        <type>UNIQUE (payment_module)</type>
+    </constraint>
+</table>

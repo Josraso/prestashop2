@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document   : ListPrestashopTaxMap.xml
+    Description:
+        Vista de listado para mapeos de tipos de IVA
+-->
+<view>
+    <columns>
+        <column name="rate_prestashop" display="left" order="100" title="tasa-iva-prestashop">
+            <widget type="number" fieldname="rate_prestashop" decimal="2" />
+        </column>
+        <column name="nombre_prestashop" display="left" order="110" title="nombre-descriptivo">
+            <widget type="text" fieldname="nombre_prestashop" />
+        </column>
+        <column name="codimpuesto" display="left" order="120" title="tipo-iva-facturascripts">
+            <widget type="text" fieldname="codimpuesto" />
+        </column>
+    </columns>
+</view>

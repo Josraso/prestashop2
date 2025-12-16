@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document   : EditPrestashopPaymentMap.xml
+    Description:
+        Vista de edición para mapeos de formas de pago
+-->
+<view>
+    <columns>
+        <group name="data" numcolumns="12" title="mapeo-pago-prestashop">
+            <column name="payment_module" display="left" numcolumns="12" order="100" title="metodo-pago-prestashop">
+                <widget type="text" fieldname="payment_module" required="true" maxlength="100" hint="Ej: bankwire, paypal, ps_wirepayment, etc." />
+            </column>
+            <column name="nombre_prestashop" display="left" numcolumns="12" order="110" title="nombre-descriptivo">
+                <widget type="text" fieldname="nombre_prestashop" maxlength="200" hint="Nombre descriptivo para identificar fácilmente (opcional)" />
+            </column>
+            <column name="codpago" display="left" numcolumns="12" order="120" title="forma-pago-facturascripts">
+                <widget type="select" fieldname="codpago" required="true">
+                    <values source="formaspago" fieldcode="codpago" fieldtitle="descripcion" />
+                </widget>
+            </column>
+        </group>
+    </columns>
+</view>

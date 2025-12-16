@@ -1,0 +1,616 @@
+{% extends "Master/MenuTemplate.html.twig" %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-3">
+                <i class="fas fa-box-open"></i> Productos PrestaShop
+            </h1>
+
+            {# Botones de acción #}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <button id="btnDownload" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Descargar Productos
+                    </button>
+                    <button id="btnImport" class="btn btn-success" disabled>
+                        <i class="fas fa-file-import"></i> Importar Seleccionados
+                    </button>
+                    <button id="btnUpdateVentaSinStock" class="btn btn-info">
+                        <i class="fas fa-check-circle"></i> Actualizar Venta sin Stock
+                    </button>
+                    <button id="btnClear" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Limpiar
+                    </button>
+
+                    <a href="DashboardPrestashop" class="btn btn-outline-secondary ml-2">
+                        <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                    </a>
+
+                    <a href="ConfigPrestashop" class="btn btn-outline-secondary ml-2">
+                        <i class="fas fa-cog"></i> Configuración
+                    </a>
+
+                    <div class="float-right">
+                        <label class="mr-2 mb-0" style="display: inline-block;">
+                            Límite selección:
+                            <input type="number" id="maxSelectionLimit" class="form-control form-control-sm d-inline-block"
+                                   style="width: 80px;" min="1" max="1000" value="100">
+                        </label>
+                        <span class="badge badge-info" id="totalBadge">0 productos</span>
+                        <span class="badge badge-success" id="selectedBadge">0 seleccionados</span>
+                        <span class="badge badge-secondary" id="visibleBadge">0 visibles</span>
+                    </div>
+                </div>
+            </div>
+
+            {# Filtros #}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fas fa-filter"></i> Filtros
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input filter-checkbox" id="filterImported" value="imported" checked>
+                                <label class="custom-control-label" for="filterImported">
+                                    <span class="badge badge-primary">Importados</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input filter-checkbox" id="filterExists" value="exists" checked>
+                                <label class="custom-control-label" for="filterExists">
+                                    <span class="badge badge-warning">Ya existen</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input filter-checkbox" id="filterNew" value="new" checked>
+                                <label class="custom-control-label" for="filterNew">
+                                    <span class="badge badge-info">Nuevos</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <button id="btnSelectAllFilters" class="btn btn-sm btn-outline-primary mr-2">
+                                <i class="fas fa-check-double"></i> Todos
+                            </button>
+                            <button id="btnClearAllFilters" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-times"></i> Ninguno
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Barra de progreso #}
+            <div id="progressContainer" class="card mb-3" style="display: none;">
+                <div class="card-body">
+                    <div class="progress" style="height: 30px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar" style="width: 0%">
+                            <span id="progressText">0%</span>
+                        </div>
+                    </div>
+                    <small id="progressDetail" class="text-muted mt-2 d-block"></small>
+                </div>
+            </div>
+
+            {# Tabla de productos #}
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm" id="productsTable">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="selectAll">
+                                    </th>
+                                    <th>#</th>
+                                    <th>ID PS</th>
+                                    <th>Combinación</th>
+                                    <th>Referencia</th>
+                                    <th>Nombre</th>
+                                    <th>Precio (sin IVA)</th>
+                                    <th>Stock</th>
+                                    <th>Estado</th>
+                                    <th>Imagen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsBody">
+                                <tr>
+                                    <td colspan="10" class="text-center text-muted">
+                                        <i class="fas fa-info-circle"></i> Haz clic en "Descargar Productos" para comenzar
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .product-exists {
+        background-color: #d4edda !important;
+    }
+    .product-imported {
+        background-color: #cce5ff !important;
+    }
+    .product-new {
+        background-color: inherit;
+    }
+    #productsTable tbody tr:hover {
+        cursor: pointer;
+    }
+
+    /* Asegurar que los badges tengan buen contraste */
+    .badge {
+        font-size: 0.85rem;
+        padding: 0.35em 0.65em;
+        font-weight: 600;
+    }
+
+    .badge-primary {
+        background-color: #007bff !important;
+        color: #fff !important;
+    }
+
+    .badge-success {
+        background-color: #28a745 !important;
+        color: #fff !important;
+    }
+
+    .badge-warning {
+        background-color: #ffc107 !important;
+        color: #212529 !important;
+    }
+
+    .badge-info {
+        background-color: #17a2b8 !important;
+        color: #fff !important;
+    }
+
+    .badge-secondary {
+        background-color: #6c757d !important;
+        color: #fff !important;
+    }
+
+    .badge-danger {
+        background-color: #dc3545 !important;
+        color: #fff !important;
+    }
+</style>
+
+<script>
+let allProducts = [];
+let selectedProducts = new Set();
+let importedProducts = new Set();
+let activeFilters = {
+    imported: true,
+    exists: true,
+    new: true
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const btnDownload = document.getElementById('btnDownload');
+    const btnImport = document.getElementById('btnImport');
+    const btnUpdateVentaSinStock = document.getElementById('btnUpdateVentaSinStock');
+    const btnClear = document.getElementById('btnClear');
+    const selectAll = document.getElementById('selectAll');
+
+    // Evento: Descargar productos
+    btnDownload.addEventListener('click', function() {
+        downloadAllProducts();
+    });
+
+    // Evento: Importar seleccionados
+    btnImport.addEventListener('click', function() {
+        importSelectedProducts();
+    });
+
+    // Evento: Actualizar venta sin stock
+    btnUpdateVentaSinStock.addEventListener('click', function() {
+        if (confirm('¿Actualizar TODOS los productos en FacturaScripts para permitir venta sin stock?')) {
+            updateAllVentaSinStock();
+        }
+    });
+
+    // Evento: Limpiar tabla
+    btnClear.addEventListener('click', function() {
+        if (confirm('¿Seguro que quieres limpiar la tabla de productos?')) {
+            clearProducts();
+        }
+    });
+
+    // Evento: Seleccionar todos (solo visibles, límite configurable)
+    selectAll.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.product-checkbox');
+        const maxSelectionInput = document.getElementById('maxSelectionLimit');
+        const MAX_SELECCION = parseInt(maxSelectionInput.value) || 100;
+        let count = 0;
+        let totalVisibles = 0;
+
+        // Primero contar cuántos checkboxes visibles hay
+        checkboxes.forEach(cb => {
+            const row = cb.closest('tr');
+            if (row && row.style.display !== 'none') {
+                totalVisibles++;
+            }
+        });
+
+        // Ahora seleccionar (máximo según input)
+        checkboxes.forEach(cb => {
+            const row = cb.closest('tr');
+            // Solo seleccionar checkboxes de filas visibles
+            if (row && row.style.display !== 'none') {
+                // Si estamos marcando Y ya llegamos al límite, no marcar más
+                if (this.checked && count >= MAX_SELECCION) {
+                    return; // Saltar este checkbox
+                }
+
+                cb.checked = this.checked;
+                const idx = parseInt(cb.dataset.index);
+                if (this.checked) {
+                    selectedProducts.add(idx);
+                    count++;
+                } else {
+                    selectedProducts.delete(idx);
+                }
+            }
+        });
+
+        // Mostrar alerta si hay más productos que el límite
+        if (this.checked && totalVisibles > MAX_SELECCION) {
+            alert(`⚠️ Límite de Selección Alcanzado\n\nSeleccionados: ${MAX_SELECCION} de ${totalVisibles} productos visibles\n\nPara evitar sobrecarga, "Seleccionar todos" está limitado al valor configurado.\n\nPuedes cambiar el límite en el campo "Límite selección" (máximo 1000)`);
+        }
+
+        updateSelectedBadge();
+        updateImportButton();
+    });
+
+    // Eventos: Filtros
+    document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            activeFilters[this.value] = this.checked;
+            renderTable();
+        });
+    });
+
+    // Evento: Seleccionar todos los filtros
+    document.getElementById('btnSelectAllFilters').addEventListener('click', function() {
+        document.querySelectorAll('.filter-checkbox').forEach(cb => {
+            cb.checked = true;
+            activeFilters[cb.value] = true;
+        });
+        renderTable();
+    });
+
+    // Evento: Limpiar todos los filtros
+    document.getElementById('btnClearAllFilters').addEventListener('click', function() {
+        document.querySelectorAll('.filter-checkbox').forEach(cb => {
+            cb.checked = false;
+            activeFilters[cb.value] = false;
+        });
+        renderTable();
+    });
+});
+
+async function downloadAllProducts() {
+    const btnDownload = document.getElementById('btnDownload');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const progressDetail = document.getElementById('progressDetail');
+
+    try {
+        // Deshabilitar botón y mostrar progreso
+        btnDownload.disabled = true;
+        progressContainer.style.display = 'block';
+
+        // Limpiar datos anteriores
+        allProducts = [];
+        selectedProducts.clear();
+        importedProducts.clear();
+
+        // Paso 1: Obtener total de productos
+        progressDetail.textContent = 'Obteniendo total de productos...';
+        const totalResponse = await fetch('ProductsPrestashop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'action=get-total-products'
+        });
+
+        const totalData = await totalResponse.json();
+        if (!totalData.success) {
+            throw new Error(totalData.error || 'Error obteniendo total de productos');
+        }
+
+        const totalProducts = totalData.total;
+        const batchSize = 50;
+        let offset = 0;
+        let baseProductsDownloaded = 0;
+
+        // Paso 2: Descargar productos por lotes
+        while (offset < totalProducts) {
+            baseProductsDownloaded = offset;
+            const percentage = Math.round((offset / totalProducts) * 100);
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = percentage + '%';
+            progressDetail.textContent = 'Descargando ' + offset + '/' + totalProducts + ' base... (' + allProducts.length + ' productos con combinaciones)';
+
+            const response = await fetch('ProductsPrestashop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'action=download-products-direct&offset=' + offset + '&limit=' + batchSize
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Error descargando productos');
+            }
+
+            // Agregar productos al array acumulativo
+            allProducts = allProducts.concat(data.products);
+
+            // Actualizar tabla en tiempo real
+            renderTable();
+
+            // Si no hay más productos en el lote, terminar
+            if (data.in_batch < batchSize) {
+                break;
+            }
+
+            offset += batchSize;
+        }
+
+        // Completado
+        progressBar.style.width = '100%';
+        progressText.textContent = '100%';
+        progressDetail.textContent = '✓ Descarga completada: ' + allProducts.length + ' productos totales';
+
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+        }, 3000);
+
+    } catch (error) {
+        alert('Error: ' + error.message);
+        progressDetail.textContent = '✗ Error: ' + error.message;
+        progressBar.classList.add('bg-danger');
+    } finally {
+        btnDownload.disabled = false;
+    }
+}
+
+function renderTable() {
+    const tbody = document.getElementById('productsBody');
+    const totalBadge = document.getElementById('totalBadge');
+    const visibleBadge = document.getElementById('visibleBadge');
+
+    if (allProducts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted"><i class="fas fa-info-circle"></i> Haz clic en "Descargar Productos" para comenzar</td></tr>';
+        totalBadge.textContent = '0 productos';
+        visibleBadge.textContent = '0 visibles';
+        return;
+    }
+
+    let html = '';
+    let visibleCount = 0;
+
+    allProducts.forEach((p, idx) => {
+        // Determinar clase de fila y estado
+        let rowClass = '';
+        let productType = '';
+
+        if (importedProducts.has(idx)) {
+            rowClass = 'product-imported';
+            productType = 'imported';
+        } else if (p.exists) {
+            rowClass = 'product-exists';
+            productType = 'exists';
+        } else {
+            rowClass = 'product-new';
+            productType = 'new';
+        }
+
+        // Aplicar filtro: si el tipo de producto no está activo, ocultar fila
+        const isVisible = activeFilters[productType];
+        const displayStyle = isVisible ? '' : 'display: none;';
+
+        if (isVisible) {
+            visibleCount++;
+        }
+
+        // Estado texto
+        let statusText = '';
+        let statusBadge = '';
+        if (importedProducts.has(idx)) {
+            statusText = 'Importado';
+            statusBadge = 'badge-primary';
+        } else if (p.exists) {
+            statusText = 'Ya existe';
+            statusBadge = 'badge-warning';
+        } else {
+            statusText = 'Nuevo';
+            statusBadge = 'badge-info';
+        }
+
+        // Activo/Inactivo
+        const activeText = p.active ?
+            '<span class="badge badge-success">Activo</span>' :
+            '<span class="badge badge-secondary">Inactivo</span>';
+
+        // Imagen
+        const imageHtml = p.image_url ?
+            '<img src="' + p.image_url + '" alt="Imagen" style="max-width: 50px; max-height: 50px;">' :
+            '<small class="text-muted">Sin imagen</small>';
+
+        // ID contador (empieza en 1, no en 0)
+        const contador = idx + 1;
+
+        html += '<tr class="' + rowClass + '" style="' + displayStyle + '" data-product-type="' + productType + '">' +
+            '<td><input type="checkbox" class="product-checkbox" data-index="' + idx + '"' +
+            (selectedProducts.has(idx) ? ' checked' : '') + '></td>' +
+            '<td><strong>' + contador + '</strong></td>' +
+            '<td>' + (p.ps_product_id || '-') + '</td>' +
+            '<td>' + (p.ps_combination_id || '-') + '</td>' +
+            '<td><code>' + (p.reference || '-') + '</code></td>' +
+            '<td>' + (p.name || '-') + '</td>' +
+            '<td>' + (p.price ? p.price.toFixed(2) + ' €' : '-') + '</td>' +
+            '<td>' + (p.stock !== undefined ? p.stock : '-') + '</td>' +
+            '<td><span class="badge ' + statusBadge + '">' + statusText + '</span> ' + activeText + '</td>' +
+            '<td>' + imageHtml + '</td>' +
+            '</tr>';
+    });
+
+    tbody.innerHTML = html;
+    totalBadge.textContent = allProducts.length + ' productos';
+    visibleBadge.textContent = visibleCount + ' visibles';
+
+    // Agregar eventos a checkboxes
+    document.querySelectorAll('.product-checkbox').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const idx = parseInt(this.dataset.index);
+            if (this.checked) {
+                selectedProducts.add(idx);
+            } else {
+                selectedProducts.delete(idx);
+            }
+            updateSelectedBadge();
+            updateImportButton();
+        });
+    });
+
+    updateImportButton();
+}
+
+function updateSelectedBadge() {
+    const selectedBadge = document.getElementById('selectedBadge');
+    selectedBadge.textContent = selectedProducts.size + ' seleccionados';
+}
+
+function updateImportButton() {
+    const btnImport = document.getElementById('btnImport');
+    btnImport.disabled = selectedProducts.size === 0;
+}
+
+async function importSelectedProducts() {
+    if (selectedProducts.size === 0) {
+        alert('No hay productos seleccionados');
+        return;
+    }
+
+    if (!confirm('¿Importar ' + selectedProducts.size + ' productos?')) {
+        return;
+    }
+
+    const btnImport = document.getElementById('btnImport');
+    btnImport.disabled = true;
+    btnImport.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
+
+    try {
+        // Obtener productos seleccionados
+        const productsToImport = Array.from(selectedProducts).map(idx => allProducts[idx]);
+
+        const response = await fetch('ProductsPrestashop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'import-products-json',
+                products: productsToImport
+            })
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Error importando productos');
+        }
+
+        // Marcar productos como importados
+        selectedProducts.forEach(idx => {
+            importedProducts.add(idx);
+            allProducts[idx].exists = true;
+        });
+
+        // Limpiar selección
+        selectedProducts.clear();
+        document.getElementById('selectAll').checked = false;
+
+        // Re-renderizar tabla
+        renderTable();
+
+        let resultMsg = '✓ Importación completada\n';
+        resultMsg += 'Importados: ' + data.imported + '\n';
+        resultMsg += 'Errores: ' + data.errors;
+
+        // Mostrar referencias de productos con error
+        if (data.error_references && data.error_references.length > 0) {
+            resultMsg += '\n\n=== PRODUCTOS CON ERROR ===\n';
+            resultMsg += data.error_references.join(', ');
+        }
+
+        alert(resultMsg);
+
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        btnImport.disabled = false;
+        btnImport.innerHTML = '<i class="fas fa-file-import"></i> Importar Seleccionados';
+    }
+}
+
+async function updateAllVentaSinStock() {
+    const btnUpdate = document.getElementById('btnUpdateVentaSinStock');
+    btnUpdate.disabled = true;
+    btnUpdate.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
+
+    try {
+        const response = await fetch('ProductsPrestashop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'update-ventasinstock'
+            })
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Error actualizando productos');
+        }
+
+        alert('✓ Actualización completada\n' +
+              'Productos actualizados: ' + data.updated + '\n' +
+              'Todos los productos ahora permiten venta sin stock');
+
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        btnUpdate.disabled = false;
+        btnUpdate.innerHTML = '<i class="fas fa-check-circle"></i> Actualizar Venta sin Stock';
+    }
+}
+
+function clearProducts() {
+    allProducts = [];
+    selectedProducts.clear();
+    importedProducts.clear();
+    renderTable();
+}
+</script>
+
+{% endblock %}

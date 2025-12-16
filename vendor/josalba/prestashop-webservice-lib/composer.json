@@ -1,0 +1,38 @@
+{
+  "name": "josalba/prestashop-webservice-lib",
+  "description": "PrestaShop Webservice access library",
+  "license": "OSL-3.0",
+  "authors": [
+    {
+      "name": "PrestaShop SA",
+      "email": "contact@prestashop.com"
+    },
+    {
+      "name": "josAlba",
+      "email": "josalba@icloud.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "prestashop\\prestashopWebserviceLib\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "prestashop\\prestashopWebserviceLib\\Tests\\": "tests/"
+    }
+  },
+  "require": {
+    "php": ">=8.0",
+    "ext-curl": "*",
+    "ext-libxml": "*",
+    "ext-simplexml": "*",
+    "guzzlehttp/guzzle": "^7.5",
+    "jms/serializer-bundle": "^5.2",
+    "doctrine/annotations": "^2.0"
+  },
+  "require-dev": {
+    "roave/security-advisories": "dev-latest",
+    "phpunit/phpunit": "^10.0"
+  }
+}

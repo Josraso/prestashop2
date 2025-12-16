@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document   : prestashop_tax_map.xml
+    Description:
+        Estructura de la tabla prestashop_tax_map para mapear tipos de IVA
+        de PrestaShop con los de FacturaScripts.
+-->
+<table>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>rate_prestashop</name>
+        <type>double precision</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>nombre_prestashop</name>
+        <type>character varying(200)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>codimpuesto</name>
+        <type>character varying(10)</type>
+        <null>NO</null>
+    </column>
+    <constraint>
+        <name>prestashop_tax_map_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+    <constraint>
+        <name>uniq_rate_prestashop</name>
+        <type>UNIQUE (rate_prestashop)</type>
+    </constraint>
+</table>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document   : PrestashopPaymentMap.xml
+    Description:
+        Vista para el modelo PrestashopPaymentMap
+-->
+<view>
+    <columns>
+        <column name="payment_module" display="left" order="100">
+            <widget type="text" fieldname="payment_module" required="true" maxlength="100" />
+        </column>
+        <column name="nombre_prestashop" display="left" order="110">
+            <widget type="text" fieldname="nombre_prestashop" maxlength="200" />
+        </column>
+        <column name="codpago" display="left" order="120">
+            <widget type="select" fieldname="codpago" required="true">
+                <values source="formaspago" fieldcode="codpago" fieldtitle="descripcion" />
+            </widget>
+        </column>
+    </columns>
+</view>

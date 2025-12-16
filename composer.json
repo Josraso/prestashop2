@@ -1,0 +1,20 @@
+{
+  "name": "facturascripts/prestashop",
+  "description": "Synchronize prestashop.",
+  "authors": [
+    {
+      "name": "Jos Alba",
+      "email": "josalba@icloud.com"
+    }
+  ],
+  "config": {
+    "platform": {
+      "php": "8.0.0"
+    }
+  },
+  "require": {
+    "php": "^8.0",
+    "josalba/prestashop-webservice-lib": "dev-master",
+    "symfony/http-foundation": "4.4.*"
+  }
+}

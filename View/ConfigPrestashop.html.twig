@@ -1,0 +1,1014 @@
+{% extends "Master/MenuTemplate.html.twig" %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            {# Mensajes del sistema #}
+            {% for type, messages in fsc.toolBox().log().read() %}
+                {% if messages %}
+                    {% set color = 'info' %}
+                    {% if type == 'error' or type == 'critical' %}
+                        {% set color = 'danger' %}
+                    {% elseif type == 'warning' %}
+                        {% set color = 'warning' %}
+                    {% elseif type == 'notice' %}
+                        {% set color = 'success' %}
+                    {% endif %}
+                    <div class="alert alert-{{ color }} alert-dismissible fade show" role="alert">
+                        {% for msg in messages %}
+                            {{ msg.message }}<br/>
+                        {% endfor %}
+                        <button type="button" class="close" data-dismiss="alert">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                {% endif %}
+            {% endfor %}
+
+            {# Header del Plugin #}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h4 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-shopping-cart"></i> PrestaShop Plugin
+                    </h4>
+                    <span class="badge badge-success">v1.0</span>
+                </div>
+            </div>
+
+            {# Tabs Navigation #}
+            <ul class="nav nav-tabs nav-fill mb-4" id="prestashop-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link {% if fsc.activeTab == 'config' %}active{% endif %}"
+                       id="config-tab"
+                       data-toggle="tab"
+                       href="#config"
+                       role="tab">
+                        <i class="fas fa-cog"></i> Configuración
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if fsc.activeTab == 'tax' %}active{% endif %}"
+                       id="tax-tab"
+                       data-toggle="tab"
+                       href="#tax"
+                       role="tab">
+                        <i class="fas fa-percentage"></i> Mapeo de IVA
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if fsc.activeTab == 'payment' %}active{% endif %}"
+                       id="payment-tab"
+                       data-toggle="tab"
+                       href="#payment"
+                       role="tab">
+                        <i class="fas fa-credit-card"></i> Mapeo de Pagos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if fsc.activeTab == 'import' %}active{% endif %}"
+                       id="import-tab"
+                       data-toggle="tab"
+                       href="#import"
+                       role="tab">
+                        <i class="fas fa-rocket"></i> Importación Manual
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if fsc.activeTab == 'webhooks' %}active{% endif %}"
+                       id="webhooks-tab"
+                       data-toggle="tab"
+                       href="#webhooks"
+                       role="tab">
+                        <i class="fas fa-bolt"></i> Webhooks
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if fsc.activeTab == 'help' %}active{% endif %}"
+                       id="help-tab"
+                       data-toggle="tab"
+                       href="#help"
+                       role="tab">
+                        <i class="fas fa-question-circle"></i> Ayuda
+                    </a>
+                </li>
+            </ul>
+
+            {# Tabs Content #}
+            <div class="tab-content" id="prestashop-tabs-content">
+
+                {# ============================================ #}
+                {# TAB 1: CONFIGURACIÓN                        #}
+                {# ============================================ #}
+                <div class="tab-pane fade {% if fsc.activeTab == 'config' %}show active{% endif %}"
+                     id="config"
+                     role="tabpanel">
+
+                    <form action="{{ fsc.url() }}" method="post" class="form">
+                        <input type="hidden" name="action" value="save"/>
+                        {{ formToken() }}
+
+                        {# Conexión #}
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-plug"></i> Conexión con PrestaShop
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="shop_url">
+                                        URL de la tienda <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <input type="text" name="shop_url" id="shop_url"
+                                               value="{{ fsc.config.shop_url }}"
+                                               class="form-control"
+                                               placeholder="https://mitienda.com"
+                                               required/>
+                                        <small class="form-text text-muted">
+                                            URL completa de tu tienda PrestaShop
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="api_key">
+                                        API Key <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <input type="text" name="api_key" id="api_key"
+                                               value="{{ fsc.config.api_key }}"
+                                               class="form-control"
+                                               required/>
+                                        <small class="form-text text-muted">
+                                            Clave API del Webservice de PrestaShop
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="use_ws_key_param">
+                                        Modo autenticación
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <div class="form-check">
+                                            <input type="checkbox" name="use_ws_key_param" id="use_ws_key_param"
+                                                   value="1"
+                                                   class="form-check-input"
+                                                   {% if fsc.config.use_ws_key_param %}checked{% endif %}/>
+                                            <label class="form-check-label" for="use_ws_key_param">
+                                                Enviar API Key como parámetro (solución para error 401)
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            ⚠️ Activa esto si obtienes error 401 o "Pedido inválido ID=0".
+                                            Envía el ws_key como parámetro GET en lugar de usar Basic Auth.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <div class="col-sm-9 offset-sm-3">
+                                        <button type="button"
+                                                class="btn btn-info"
+                                                onclick="testConnection()">
+                                            <i class="fas fa-check-circle"></i> Probar Conexión
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Configuración de Importación #}
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-download"></i> Configuración de Importación
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="codalmacen">
+                                        Almacén <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <select name="codalmacen" id="codalmacen" class="form-control" required>
+                                            <option value="">Selecciona un almacén</option>
+                                            {% for almacen in fsc.almacenes %}
+                                                <option value="{{ almacen.codalmacen }}"
+                                                        {% if almacen.codalmacen == fsc.config.codalmacen %}selected{% endif %}>
+                                                    {{ almacen.nombre }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="codserie">
+                                        Serie <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <select name="codserie" id="codserie" class="form-control" required>
+                                            <option value="">Selecciona una serie</option>
+                                            {% for serie in fsc.series %}
+                                                <option value="{{ serie.codserie }}"
+                                                        {% if serie.codserie == fsc.config.codserie %}selected{% endif %}>
+                                                    {{ serie.descripcion }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="idioma_productos">
+                                        Idioma de Productos <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <select name="idioma_productos" id="idioma_productos" class="form-control" required>
+                                            {% if fsc.idiomasPrestaShop|length > 0 %}
+                                                {% for id, nombre in fsc.idiomasPrestaShop %}
+                                                    <option value="{{ id }}" {% if id == fsc.config.idioma_productos %}selected{% endif %}>
+                                                        {{ nombre }}
+                                                    </option>
+                                                {% endfor %}
+                                            {% else %}
+                                                <option value="">Primero prueba la conexión para cargar idiomas</option>
+                                            {% endif %}
+                                        </select>
+                                        <small class="form-text text-muted">
+                                            Idioma en el que se importarán los nombres y descripciones de productos y pedidos desde PrestaShop.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">
+                                        Estados a Importar
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <button type="button" class="btn btn-sm btn-secondary mb-2" onclick="loadStates()">
+                                            <i class="fas fa-sync"></i> Cargar Estados
+                                        </button>
+
+                                        <div id="estados-container">
+                                            {% set estadosActuales = fsc.config.getEstadosArray() %}
+                                            {% for id, nombre in fsc.getEstadosPrestaShop() %}
+                                                <div class="custom-control custom-checkbox">
+                                                    <input type="checkbox"
+                                                           class="custom-control-input"
+                                                           id="estado_{{ id }}"
+                                                           name="estados[]"
+                                                           value="{{ id }}"
+                                                           {% if id in estadosActuales %}checked{% endif %}>
+                                                    <label class="custom-control-label" for="estado_{{ id }}">
+                                                        {{ nombre }}
+                                                    </label>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Solo se importarán pedidos con estos estados
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="import_since_id">
+                                        Importar desde ID (cron)
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <input type="number"
+                                               name="import_since_id"
+                                               id="import_since_id"
+                                               value="{{ fsc.config.import_since_id|default(0) }}"
+                                               class="form-control"
+                                               min="0"
+                                               placeholder="0"/>
+                                        <small class="form-text text-muted">
+                                            El cron automático solo importará pedidos con ID mayor o igual a este valor.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="import_since_date">
+                                        Importar desde fecha
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <input type="date" name="import_since_date" id="import_since_date"
+                                               value="{{ fsc.config.import_since_date|default('') }}"
+                                               class="form-control"
+                                               placeholder="YYYY-MM-DD"/>
+                                        <small class="form-text text-muted">
+                                            Fecha fija desde la que siempre buscar pedidos. El sistema escaneará todos los pedidos desde esta fecha
+                                            y omitirá los que ya fueron importados. Deja vacío para importar desde el principio.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">
+                                        Sincronización Automática
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox"
+                                                   class="custom-control-input"
+                                                   id="activo"
+                                                   name="activo"
+                                                   value="1"
+                                                   {% if fsc.config.activo %}checked{% endif %}>
+                                            <label class="custom-control-label" for="activo">
+                                                Activar importación automática (CRON)
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            La sincronización se ejecuta cada 15 minutos via CRON
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Botón Guardar #}
+                        <div class="text-right mb-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {# ============================================ #}
+                {# TAB 2: MAPEO DE IVA                         #}
+                {# ============================================ #}
+                <div class="tab-pane fade {% if fsc.activeTab == 'tax' %}show active{% endif %}"
+                     id="tax"
+                     role="tabpanel">
+
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                            <h6 class="m-0 font-weight-bold text-primary">
+                                <i class="fas fa-percentage"></i> Mapeo de Tipos de IVA
+                            </h6>
+                            <a href="EditPrestashopTaxMap" class="btn btn-sm btn-success">
+                                <i class="fas fa-plus"></i> Nuevo Mapeo
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">
+                                Mapea los porcentajes de IVA de PrestaShop con los códigos de impuesto de FacturaScripts.
+                            </p>
+
+                            {% if fsc.taxMaps|length > 0 %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>IVA PrestaShop (%)</th>
+                                                <th>Código Impuesto FacturaScripts</th>
+                                                <th class="text-right">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for map in fsc.taxMaps %}
+                                                <tr>
+                                                    <td><strong>{{ map.rate_prestashop }}%</strong></td>
+                                                    <td>
+                                                        <span class="badge badge-info">{{ map.codimpuesto }}</span>
+                                                    </td>
+                                                    <td class="text-right">
+                                                        <a href="EditPrestashopTaxMap?code={{ map.id }}"
+                                                           class="btn btn-sm btn-warning">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    No hay mapeos configurados. Añade al menos uno para que los productos se importen con el IVA correcto.
+                                </div>
+                            {% endif %}
+
+                            <div class="alert alert-info mt-3">
+                                <strong><i class="fas fa-info-circle"></i> Ejemplo:</strong><br>
+                                Si PrestaShop usa tasa 21% → Selecciona "IVA21" en FacturaScripts<br>
+                                Los productos importados usarán automáticamente este mapeo.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# ============================================ #}
+                {# TAB 3: MAPEO DE PAGOS                       #}
+                {# ============================================ #}
+                <div class="tab-pane fade {% if fsc.activeTab == 'payment' %}show active{% endif %}"
+                     id="payment"
+                     role="tabpanel">
+
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                            <h6 class="m-0 font-weight-bold text-primary">
+                                <i class="fas fa-credit-card"></i> Mapeo de Formas de Pago
+                            </h6>
+                            <div>
+                                <form action="{{ fsc.url() }}" method="post" style="display: inline;">
+                                    <input type="hidden" name="action" value="detect-payment-methods"/>
+                                    {{ formToken() }}
+                                    <button type="submit" class="btn btn-sm btn-info mr-2">
+                                        <i class="fas fa-search"></i> Detectar Métodos
+                                    </button>
+                                </form>
+                                <a href="EditPrestashopPaymentMap" class="btn btn-sm btn-success">
+                                    <i class="fas fa-plus"></i> Nuevo Mapeo
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">
+                                Mapea los métodos de pago de PrestaShop con las formas de pago de FacturaScripts.
+                            </p>
+
+                            {% if fsc.paymentMaps|length > 0 %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Método PrestaShop</th>
+                                                <th>Nombre</th>
+                                                <th>Forma de Pago FacturaScripts</th>
+                                                <th class="text-right">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for map in fsc.paymentMaps %}
+                                                <tr>
+                                                    <td><code>{{ map.payment_module }}</code></td>
+                                                    <td>{{ map.nombre_prestashop }}</td>
+                                                    <td>
+                                                        <span class="badge badge-success">{{ map.codpago }}</span>
+                                                    </td>
+                                                    <td class="text-right">
+                                                        <a href="EditPrestashopPaymentMap?code={{ map.id }}"
+                                                           class="btn btn-sm btn-warning">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    No hay mapeos configurados. Usa "Detectar Métodos" para encontrar automáticamente los métodos de pago usados en tu tienda.
+                                </div>
+                            {% endif %}
+
+                            <div class="alert alert-info mt-3">
+                                <strong><i class="fas fa-info-circle"></i> Cómo funciona:</strong><br>
+                                1. Click en "Detectar Métodos" para ver qué métodos usa PrestaShop<br>
+                                2. Añade un mapeo por cada método<br>
+                                3. Los albaranes importados tendrán automáticamente la forma de pago correcta
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# ============================================ #}
+                {# TAB 4: IMPORTACIÓN MANUAL                   #}
+                {# ============================================ #}
+                <div class="tab-pane fade {% if fsc.activeTab == 'import' %}show active{% endif %}"
+                     id="import"
+                     role="tabpanel">
+
+                    {# Importación por lotes #}
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-success">
+                                <i class="fas fa-rocket"></i> Importación Manual por Lotes
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">
+                                Importa pedidos manualmente sin esperar al cron. Útil cuando necesitas subir pedidos durante el día.
+                            </p>
+
+                            {% if fsc.importResult %}
+                                {{ fsc.importResult|raw }}
+                            {% endif %}
+
+                            <form action="{{ fsc.url() }}?tab=import" method="post" class="form">
+                                <input type="hidden" name="action" value="import-batch"/>
+                                {{ formToken() }}
+
+                                <div class="form-row align-items-end">
+                                    <div class="col-md-6">
+                                        <label for="manual_since_id">Importar desde ID (opcional)</label>
+                                        <input type="number"
+                                               name="manual_since_id"
+                                               id="manual_since_id"
+                                               class="form-control"
+                                               placeholder="Ej: 5000 (dejar vacío para importar todos)"
+                                               min="0"
+                                               value="0"/>
+                                        <small class="form-text text-muted">
+                                            Si lo dejas vacío (0), importará todos los pedidos pendientes.<br>
+                                            Si pones un ID, importará desde ese ID en adelante.
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button type="submit" class="btn btn-success btn-lg">
+                                            <i class="fas fa-rocket"></i> Importar Ahora
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Importante:</strong> Esta importación respeta los estados configurados.
+                                Solo importa pedidos con los estados seleccionados en la pestaña Configuración.
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Importación de un pedido (test) #}
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-info">
+                                <i class="fas fa-vial"></i> Importar Pedido Específico (Test)
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">
+                                Usa esta opción para importar un pedido específico y ver el resultado detallado. Útil para pruebas.
+                            </p>
+
+                            <form action="{{ fsc.url() }}?tab=import" method="post" class="form">
+                                <input type="hidden" name="action" value="import-order"/>
+                                {{ formToken() }}
+
+                                <div class="form-row align-items-end">
+                                    <div class="col-md-6">
+                                        <label for="order_id">ID del Pedido de PrestaShop</label>
+                                        <input type="number"
+                                               name="order_id"
+                                               id="order_id"
+                                               class="form-control"
+                                               placeholder="Ej: 12345"
+                                               min="1"
+                                               required/>
+                                        <small class="form-text text-muted">
+                                            Introduce el ID numérico del pedido que deseas importar
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button type="submit" class="btn btn-info">
+                                            <i class="fas fa-download"></i> Importar Pedido
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                {# ============================================ #}
+                {# TAB 5: WEBHOOKS                             #}
+                {# ============================================ #}
+                <div class="tab-pane fade {% if fsc.activeTab == 'webhooks' %}show active{% endif %}"
+                     id="webhooks"
+                     role="tabpanel">
+
+                    {# Configuración de Webhooks #}
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">
+                                <i class="fas fa-bolt"></i> Configuración de Webhooks
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <strong><i class="fas fa-info-circle"></i> ¿Qué son los webhooks?</strong><br>
+                                Los webhooks permiten que PrestaShop notifique <strong>inmediatamente</strong> a FacturaScripts cuando se crea o actualiza un pedido.
+                                Esto significa que los pedidos se importan en <strong>tiempo real</strong> (en menos de 1 segundo), en lugar de esperar a que el cron se ejecute.
+                            </div>
+
+                            <form action="{{ fsc.url() }}?tab=webhooks" method="post" class="form">
+                                <input type="hidden" name="action" value="save-webhooks"/>
+                                {{ formToken() }}
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">
+                                        Estado de Webhooks
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox"
+                                                   class="custom-control-input"
+                                                   id="webhook_enabled"
+                                                   name="webhook_enabled"
+                                                   value="1"
+                                                   {% if fsc.config.webhook_enabled %}checked{% endif %}>
+                                            <label class="custom-control-label" for="webhook_enabled">
+                                                <strong>{% if fsc.config.webhook_enabled %}<span class="text-success">✓ Activado</span>{% else %}<span class="text-muted">✗ Desactivado</span>{% endif %}</strong>
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Activa esta opción para recibir notificaciones en tiempo real desde PrestaShop
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="text-right">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Guardar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    {% if fsc.config.webhook_enabled %}
+                        {# URL del Webhook #}
+                        <div class="card shadow mb-4 border-success">
+                            <div class="card-header py-3 bg-success text-white">
+                                <h6 class="m-0 font-weight-bold">
+                                    <i class="fas fa-link"></i> URL del Webhook
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Copia esta URL y configúrala en tu módulo de webhooks de PrestaShop:</strong></p>
+
+                                <div class="input-group mb-3">
+                                    <input type="text"
+                                           class="form-control font-weight-bold"
+                                           id="webhook-url"
+                                           value="{{ fsc.getWebhookUrl() }}"
+                                           readonly
+                                           style="background-color: #f8f9fa; font-size: 13px;">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copyWebhookUrl()">
+                                            <i class="fas fa-copy"></i> Copiar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <strong>Importante:</strong> Esta URL contiene un token secreto. No la compartas públicamente.
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Token de Seguridad #}
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-key"></i> Token de Seguridad
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p>El token actual es:</p>
+                                <div class="input-group mb-3">
+                                    <input type="text"
+                                           class="form-control font-monospace"
+                                           value="{{ fsc.config.webhook_token }}"
+                                           readonly
+                                           style="background-color: #f8f9fa; letter-spacing: 1px;">
+                                    <div class="input-group-append">
+                                        <form action="{{ fsc.url() }}?tab=webhooks" method="post" style="display: inline;">
+                                            <input type="hidden" name="action" value="regenerate-token"/>
+                                            {{ formToken() }}
+                                            <button class="btn btn-warning" type="submit" onclick="return confirm('¿Estás seguro? Tendrás que actualizar la URL en PrestaShop.')">
+                                                <i class="fas fa-sync"></i> Regenerar Token
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> Regenera el token si crees que ha sido comprometido.
+                                    <strong>Importante:</strong> Deberás actualizar la URL en PrestaShop después de regenerar.
+                                </small>
+                            </div>
+                        </div>
+
+                        {# Instrucciones de Configuración #}
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-book"></i> Cómo configurar el módulo en PrestaShop
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <h6><i class="fas fa-puzzle-piece"></i> Paso 1: Instalar módulo de webhooks en PrestaShop</h6>
+                                <p>Necesitas un módulo que envíe webhooks cuando se creen o actualicen pedidos. Opciones recomendadas:</p>
+                                <ul>
+                                    <li><strong>Opción 1:</strong> Módulo personalizado (próximamente disponible en este plugin)</li>
+                                    <li><strong>Opción 2:</strong> Módulos del marketplace de PrestaShop como "Webhook Manager" o similares</li>
+                                    <li><strong>Opción 3:</strong> Desarrollar un módulo personalizado</li>
+                                </ul>
+
+                                <h6 class="mt-4"><i class="fas fa-cog"></i> Paso 2: Configurar el webhook</h6>
+                                <p>En el módulo de webhooks de PrestaShop, configura:</p>
+                                <ol>
+                                    <li><strong>URL del webhook:</strong> Copia la URL mostrada arriba</li>
+                                    <li><strong>Evento:</strong> Selecciona "Cuando se crea/actualiza un pedido"</li>
+                                    <li><strong>Método HTTP:</strong> POST</li>
+                                    <li><strong>Payload:</strong> El módulo debe enviar al menos el <code>order_id</code> del pedido</li>
+                                </ol>
+
+                                <h6 class="mt-4"><i class="fas fa-check-circle"></i> Paso 3: Probar</h6>
+                                <p>Crea un pedido de prueba en PrestaShop y verifica que:</p>
+                                <ul>
+                                    <li>El pedido se importe automáticamente en FacturaScripts (sin esperar al cron)</li>
+                                    <li>Revisa el <a href="DashboardPrestashop" target="_blank">Dashboard PrestaShop</a> para ver si aparece con origen "webhook"</li>
+                                </ul>
+
+                                <div class="alert alert-success mt-3">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <strong>Ventaja:</strong> Con webhooks configurados, los pedidos se importan <strong>instantáneamente</strong> en lugar de esperar hasta 15 minutos al siguiente cron.
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Probar Webhook #}
+                        <div class="card shadow mb-4 border-info">
+                            <div class="card-header py-3 bg-info text-white">
+                                <h6 class="m-0 font-weight-bold">
+                                    <i class="fas fa-flask"></i> Probar Webhook
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p>Envía un webhook de prueba para verificar que todo funciona correctamente:</p>
+
+                                <form action="{{ fsc.url() }}?tab=webhooks" method="post" class="form-inline">
+                                    <input type="hidden" name="action" value="test-webhook"/>
+                                    {{ formToken() }}
+
+                                    <div class="form-group mr-2">
+                                        <label for="test_order_id" class="mr-2">ID del pedido PrestaShop:</label>
+                                        <input type="number"
+                                               name="test_order_id"
+                                               id="test_order_id"
+                                               class="form-control"
+                                               placeholder="Ej: 123"
+                                               min="1"
+                                               required/>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-info">
+                                        <i class="fas fa-paper-plane"></i> Enviar Prueba
+                                    </button>
+                                </form>
+
+                                <div class="alert alert-info mt-3 mb-0">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Nota:</strong> Esto simulará que PrestaShop envía un webhook para el pedido especificado.
+                                    El pedido debe existir en tu tienda PrestaShop.
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Historial de Webhooks #}
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-history"></i> Historial de Webhooks Recibidos
+                                </h6>
+                                <span class="badge badge-info">Últimos 20</span>
+                            </div>
+                            <div class="card-body">
+                                {% if fsc.recentWebhooks|length > 0 %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Fecha</th>
+                                                    <th>IP</th>
+                                                    <th>Order ID</th>
+                                                    <th>Token</th>
+                                                    <th>Procesado</th>
+                                                    <th>Resultado</th>
+                                                    <th>Mensaje</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for webhook in fsc.recentWebhooks %}
+                                                <tr>
+                                                    <td class="text-nowrap">
+                                                        <small>{{ webhook.fecha }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <small><code>{{ webhook.ip }}</code></small>
+                                                    </td>
+                                                    <td>
+                                                        {% if webhook.order_id %}
+                                                            <strong>{{ webhook.order_id }}</strong>
+                                                        {% else %}
+                                                            <small class="text-muted">-</small>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if webhook.token_valido %}
+                                                            <span class="badge badge-success"><i class="fas fa-check"></i> Válido</span>
+                                                        {% else %}
+                                                            <span class="badge badge-danger"><i class="fas fa-times"></i> Inválido</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if webhook.procesado %}
+                                                            <span class="badge badge-success"><i class="fas fa-check"></i> Sí</span>
+                                                        {% else %}
+                                                            <span class="badge badge-warning"><i class="fas fa-clock"></i> No</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge {{ fsc.getWebhookBadgeClass(webhook.resultado) }}">
+                                                            {{ webhook.resultado }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <small>{{ webhook.mensaje|slice(0, 50) }}{% if webhook.mensaje|length > 50 %}...{% endif %}</small>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <strong>No hay webhooks registrados aún.</strong><br>
+                                        Usa el botón "Enviar Prueba" arriba para probar que todo funciona correctamente.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        {# Mensaje si no está activado #}
+                        <div class="card shadow mb-4 border-secondary">
+                            <div class="card-body text-center py-5">
+                                <i class="fas fa-bolt fa-4x text-muted mb-3"></i>
+                                <h5 class="text-muted">Webhooks Desactivados</h5>
+                                <p class="text-muted">
+                                    Activa los webhooks arriba para comenzar a recibir notificaciones en tiempo real desde PrestaShop.
+                                </p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {# ============================================ #}
+                {# TAB 6: AYUDA                                #}
+                {# ============================================ #}
+                <div class="tab-pane fade {% if fsc.activeTab == 'help' %}show active{% endif %}"
+                     id="help"
+                     role="tabpanel">
+
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">
+                                <i class="fas fa-question-circle"></i> Ayuda y Documentación
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <h6>Configuración del WebService en PrestaShop:</h6>
+                            <ol>
+                                <li>En tu panel de PrestaShop, ve a <strong>Parámetros avanzados > Web service</strong></li>
+                                <li>Activa el Web service si no está activado</li>
+                                <li>Crea una nueva clave API con permisos de lectura para:
+                                    <ul>
+                                        <li>orders (pedidos)</li>
+                                        <li>order_states (estados de pedidos)</li>
+                                        <li>order_histories (historial de estados)</li>
+                                        <li>customers (clientes)</li>
+                                        <li>addresses (direcciones)</li>
+                                        <li>products (productos)</li>
+                                        <li>states (provincias)</li>
+                                    </ul>
+                                </li>
+                                <li>Copia la clave generada y pégala en el campo "API Key"</li>
+                            </ol>
+
+                            <h6 class="mt-3">Funcionamiento:</h6>
+                            <ul>
+                                <li>Los pedidos se importan como <strong>albaranes de cliente</strong></li>
+                                <li>El número de pedido de PrestaShop se guarda en el campo <strong>Número 2</strong></li>
+                                <li>Solo se importan pedidos con los estados seleccionados</li>
+                                <li>Los clientes se crean automáticamente si no existen</li>
+                                <li>La fecha del albarán es la fecha del <strong>último estado</strong> del pedido</li>
+                                <li>Los productos se crean automáticamente si no existen</li>
+                                <li>La sincronización se ejecuta automáticamente mediante CRON</li>
+                            </ul>
+
+                            <h6 class="mt-3">Clientes:</h6>
+                            <ul>
+                                <li>Se crea como <strong>empresa</strong> solo si tiene nombre de empresa Y CIF</li>
+                                <li>Si solo tiene nombre de empresa o solo CIF → se crea como particular</li>
+                                <li>Los clientes se buscan por CIF/NIF/DNI (ignorando formato y mayúsculas)</li>
+                                <li>No se duplican clientes existentes</li>
+                            </ul>
+
+                            <h6 class="mt-3">Log de Errores:</h6>
+                            <p>
+                                Los errores durante la importación automática (cron) se guardan en:<br>
+                                <code>MyFiles/Logs/prestashop_import_errors.log</code>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div> {# End tab-content #}
+        </div>
+    </div>
+</div>
+
+<script>
+// Inicializar pestañas con JavaScript vanilla
+document.addEventListener('DOMContentLoaded', function() {
+    // Obtener todas las pestañas
+    const tabs = document.querySelectorAll('a[data-toggle="tab"]');
+
+    // Agregar evento click a cada pestaña
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            // Remover clase active de todas las pestañas
+            tabs.forEach(t => {
+                t.classList.remove('active');
+                const paneId = t.getAttribute('href').substring(1);
+                const pane = document.getElementById(paneId);
+                if (pane) {
+                    pane.classList.remove('show', 'active');
+                }
+            });
+
+            // Agregar clase active a la pestaña clickeada
+            this.classList.add('active');
+            const targetId = this.getAttribute('href').substring(1);
+            const targetPane = document.getElementById(targetId);
+            if (targetPane) {
+                targetPane.classList.add('show', 'active');
+            }
+
+            // Actualizar URL sin recargar
+            const url = new URL(window.location);
+            url.searchParams.set('tab', targetId);
+            window.history.pushState({}, '', url);
+        });
+    });
+});
+
+function testConnection() {
+    const form = document.querySelector('form[action="{{ fsc.url() }}"]');
+    const formData = new FormData(form);
+    formData.set('action', 'test');
+
+    fetch('{{ fsc.url() }}', {
+        method: 'POST',
+        body: formData
+    }).then(() => {
+        location.reload();
+    });
+}
+
+function loadStates() {
+    const form = document.querySelector('form[action="{{ fsc.url() }}"]');
+    const formData = new FormData(form);
+    formData.set('action', 'load-states');
+
+    fetch('{{ fsc.url() }}', {
+        method: 'POST',
+        body: formData
+    }).then(() => {
+        location.reload();
+    });
+}
+
+function copyWebhookUrl() {
+    const urlInput = document.getElementById('webhook-url');
+    urlInput.select();
+    urlInput.setSelectionRange(0, 99999); // Para móviles
+
+    try {
+        document.execCommand('copy');
+        alert('✓ URL copiada al portapapeles');
+    } catch (err) {
+        alert('Error al copiar. Por favor, cópiala manualmente.');
+    }
+}
+</script>
+{% endblock %}

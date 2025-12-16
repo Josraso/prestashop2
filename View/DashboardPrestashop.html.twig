@@ -1,0 +1,459 @@
+{% extends "Master/MenuTemplate.html.twig" %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-3">
+                <i class="fas fa-chart-line"></i> Dashboard PrestaShop
+            </h1>
+        </div>
+    </div>
+
+    {# Botón de importación manual #}
+    <div class="row mb-3">
+        <div class="col-12">
+            <form method="post" class="d-inline">
+                <input type="hidden" name="action" value="import-now"/>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sync"></i> Importar Pedidos Ahora
+                </button>
+            </form>
+            <a href="ProductsPrestashop" class="btn btn-success ml-2">
+                <i class="fas fa-box-open"></i> Gestionar Productos
+            </a>
+            <a href="{{ fsc.url() }}?action=refresh" class="btn btn-secondary ml-2">
+                <i class="fas fa-redo"></i> Actualizar Estadísticas
+            </a>
+            <a href="ConfigPrestashop" class="btn btn-outline-secondary ml-2">
+                <i class="fas fa-cog"></i> Configuración
+            </a>
+        </div>
+    </div>
+
+    {# Estadísticas en cards #}
+    <div class="row mb-4">
+        {# HOY #}
+        <div class="col-md-4">
+            <div class="card border-left-primary shadow h-100">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Hoy
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ fsc.statsToday.success }} importados
+                            </div>
+                            <div class="text-muted small">
+                                <span class="text-warning">{{ fsc.statsToday.skipped }} omitidos</span> |
+                                <span class="text-danger">{{ fsc.statsToday.error }} errores</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# SEMANA #}
+        <div class="col-md-4">
+            <div class="card border-left-success shadow h-100">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Última Semana
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ fsc.statsWeek.success }} importados
+                            </div>
+                            <div class="text-muted small">
+                                <span class="text-warning">{{ fsc.statsWeek.skipped }} omitidos</span> |
+                                <span class="text-danger">{{ fsc.statsWeek.error }} errores</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# MES #}
+        <div class="col-md-4">
+            <div class="card border-left-info shadow h-100">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Último Mes
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ fsc.statsMonth.success }} importados
+                            </div>
+                            <div class="text-muted small">
+                                <span class="text-warning">{{ fsc.statsMonth.skipped }} omitidos</span> |
+                                <span class="text-danger">{{ fsc.statsMonth.error }} errores</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Pestañas de importaciones #}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-list"></i> Historial de Importaciones
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {# Tabs Navigation #}
+                    <ul class="nav nav-tabs" id="importTabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="success-tab" data-toggle="tab" href="#success" role="tab">
+                                <i class="fas fa-check-circle text-success"></i>
+                                Importados ({{ fsc.importsSuccess|length }})
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="skipped-tab" data-toggle="tab" href="#skipped" role="tab">
+                                <i class="fas fa-minus-circle text-warning"></i>
+                                Omitidos ({{ fsc.importsSkipped|length }})
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="error-tab" data-toggle="tab" href="#error" role="tab">
+                                <i class="fas fa-times-circle text-danger"></i>
+                                Errores ({{ fsc.errorTotal }})
+                            </a>
+                        </li>
+                    </ul>
+
+                    {# Tabs Content #}
+                    <div class="tab-content mt-3" id="importTabsContent">
+                        {# IMPORTADOS #}
+                        <div class="tab-pane fade show active" id="success" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha/Hora</th>
+                                            <th>Pedido PS</th>
+                                            <th>Albarán FS</th>
+                                            <th>Cliente</th>
+                                            <th class="text-right">Total</th>
+                                            <th>Origen</th>
+                                            <th>Mensaje</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for log in fsc.importsSuccess %}
+                                        <tr>
+                                            <td class="text-nowrap">
+                                                <strong>{{ log.fecha }}</strong><br>
+                                                <small class="text-muted">{{ log.hora }}</small>
+                                            </td>
+                                            <td>
+                                                {% if log.order_reference %}
+                                                    <strong>{{ log.order_reference }}</strong><br>
+                                                    <small class="text-muted">ID: {{ log.order_id }}</small>
+                                                {% else %}
+                                                    <small class="text-muted">-</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if log.idalbaran %}
+                                                    <a href="EditAlbaranCliente?code={{ log.idalbaran }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-file-invoice"></i> Ver Albarán
+                                                    </a>
+                                                {% else %}
+                                                    <small class="text-muted">-</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if log.nombrecliente %}
+                                                    <strong>{{ log.nombrecliente }}</strong><br>
+                                                    <small class="text-muted">{{ log.codcliente }}</small>
+                                                {% else %}
+                                                    <small class="text-muted">-</small>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-right">
+                                                {% if log.total %}
+                                                    <strong class="text-success">{{ log.total|number_format(2, ',', '.') }}€</strong>
+                                                {% else %}
+                                                    <small class="text-muted">-</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-dark">
+                                                    <i class="fas fa-{{ log.origen == 'webhook' ? 'bolt' : (log.origen == 'manual' ? 'hand-pointer' : 'clock') }}"></i>
+                                                    {{ log.origen }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if log.mensaje %}
+                                                    <small>{{ log.mensaje|slice(0, 60) }}{% if log.mensaje|length > 60 %}...{% endif %}</small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-4">
+                                                <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                                No hay pedidos importados aún
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {# OMITIDOS #}
+                        <div class="tab-pane fade" id="skipped" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha/Hora</th>
+                                            <th>Pedido PS</th>
+                                            <th>Origen</th>
+                                            <th>Motivo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for log in fsc.importsSkipped %}
+                                        <tr>
+                                            <td class="text-nowrap">
+                                                <strong>{{ log.fecha }}</strong><br>
+                                                <small class="text-muted">{{ log.hora }}</small>
+                                            </td>
+                                            <td>
+                                                {% if log.order_reference %}
+                                                    <strong>{{ log.order_reference }}</strong><br>
+                                                    <small class="text-muted">ID: {{ log.order_id }}</small>
+                                                {% else %}
+                                                    <small class="text-muted">ID: {{ log.order_id }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-dark">
+                                                    <i class="fas fa-{{ log.origen == 'webhook' ? 'bolt' : (log.origen == 'manual' ? 'hand-pointer' : 'clock') }}"></i>
+                                                    {{ log.origen }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if log.mensaje %}
+                                                    <small class="text-warning"><strong>{{ log.mensaje }}</strong></small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted py-4">
+                                                <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                                No hay pedidos omitidos
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {# ERRORES #}
+                        <div class="tab-pane fade" id="error" role="tabpanel">
+                            {# Botón borrar todos los errores #}
+                            {% if fsc.errorTotal > 0 %}
+                            <div class="mb-3 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Total de errores:</strong> <span class="badge badge-danger">{{ fsc.errorTotal }}</span>
+                                    <small class="text-muted ml-2">(Mostrando página {{ fsc.errorPage + 1 }} de {{ fsc.getErrorPages() }})</small>
+                                </div>
+                                <form method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de que quieres borrar TODOS los errores?');">
+                                    <input type="hidden" name="action" value="delete-all-errors"/>
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash-alt"></i> Borrar Todos los Errores
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha/Hora</th>
+                                            <th>Pedido PS</th>
+                                            <th>Origen</th>
+                                            <th>Error</th>
+                                            <th style="width: 80px;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for log in fsc.importsError %}
+                                        <tr class="error-row">
+                                            <td class="text-nowrap">
+                                                <strong>{{ log.fecha }}</strong><br>
+                                                <small class="text-muted">{{ log.hora }}</small>
+                                            </td>
+                                            <td>
+                                                {% if log.order_reference %}
+                                                    <strong>{{ log.order_reference }}</strong><br>
+                                                    <small class="text-muted">ID: {{ log.order_id }}</small>
+                                                {% else %}
+                                                    <small class="text-muted">ID: {{ log.order_id }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-dark">
+                                                    <i class="fas fa-{{ log.origen == 'webhook' ? 'bolt' : (log.origen == 'manual' ? 'hand-pointer' : 'clock') }}"></i>
+                                                    {{ log.origen }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if log.mensaje %}
+                                                    <span class="error-message">{{ log.mensaje }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <form method="post" class="d-inline" onsubmit="return confirm('¿Borrar este error?');">
+                                                    <input type="hidden" name="action" value="delete-error"/>
+                                                    <input type="hidden" name="id" value="{{ log.id }}"/>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Borrar error">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">
+                                                <i class="fas fa-check-circle fa-2x mb-2 text-success"></i><br>
+                                                No hay errores de importación
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {# Paginación #}
+                            {% if fsc.getErrorPages() > 1 %}
+                            <nav aria-label="Paginación de errores">
+                                <ul class="pagination justify-content-center">
+                                    {# Botón anterior #}
+                                    <li class="page-item {{ fsc.errorPage == 0 ? 'disabled' : '' }}">
+                                        <a class="page-link" href="{{ fsc.url() }}?error_page={{ fsc.errorPage - 1 }}#error-tab" tabindex="-1">
+                                            <i class="fas fa-chevron-left"></i> Anterior
+                                        </a>
+                                    </li>
+
+                                    {# Páginas #}
+                                    {% for page in 0..(fsc.getErrorPages() - 1) %}
+                                        {% if page < 3 or page > (fsc.getErrorPages() - 4) or (page >= fsc.errorPage - 1 and page <= fsc.errorPage + 1) %}
+                                        <li class="page-item {{ page == fsc.errorPage ? 'active' : '' }}">
+                                            <a class="page-link" href="{{ fsc.url() }}?error_page={{ page }}#error-tab">
+                                                {{ page + 1 }}
+                                            </a>
+                                        </li>
+                                        {% elseif page == 3 or page == fsc.getErrorPages() - 4 %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {# Botón siguiente #}
+                                    <li class="page-item {{ fsc.errorPage >= (fsc.getErrorPages() - 1) ? 'disabled' : '' }}">
+                                        <a class="page-link" href="{{ fsc.url() }}?error_page={{ fsc.errorPage + 1 }}#error-tab">
+                                            Siguiente <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+
+/* Estilos para filas de error - fondo suave y texto legible */
+.error-row {
+    background-color: #fff5f5 !important;
+    border-left: 3px solid #dc3545;
+}
+
+.error-row:hover {
+    background-color: #ffe6e6 !important;
+}
+
+.error-message {
+    color: #721c24;
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: block;
+    padding: 5px 0;
+}
+</style>
+
+<script>
+// JavaScript para hacer funcionar las pestañas
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('#importTabs a[data-toggle="tab"]');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            // Remover clase active de todos los tabs
+            tabs.forEach(t => t.classList.remove('active'));
+
+            // Añadir clase active al tab clickeado
+            this.classList.add('active');
+
+            // Ocultar todos los tab-panes
+            const panes = document.querySelectorAll('#importTabsContent .tab-pane');
+            panes.forEach(pane => {
+                pane.classList.remove('show', 'active');
+            });
+
+            // Mostrar el tab-pane correspondiente
+            const targetId = this.getAttribute('href');
+            const targetPane = document.querySelector(targetId);
+            if (targetPane) {
+                targetPane.classList.add('show', 'active');
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}
