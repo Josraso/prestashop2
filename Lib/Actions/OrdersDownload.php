@@ -689,9 +689,9 @@ class OrdersDownload
                 $cliente->cifnif = $dni;
                 Tools::log()->info("Creando cliente particular: {$nombrePersona} (DNI: {$dni})");
             } else {
-                // DNI genérico para consumidor final (común en España)
-                $cliente->cifnif = '999999999';
-                Tools::log()->warning("Cliente {$customerId} sin DNI/CIF en PrestaShop. Usando DNI genérico.");
+                // DNI único identificable por cliente (PSECOM + ID de PrestaShop)
+                $cliente->cifnif = 'PSECOM' . str_pad($customerId, 6, '0', STR_PAD_LEFT);
+                Tools::log()->warning("Cliente {$customerId} sin DNI/CIF en PrestaShop. Usando DNI temporal: {$cliente->cifnif}" . (!empty($email) ? ". Email: {$email}" : ""));
             }
         }
 
@@ -860,6 +860,13 @@ class OrdersDownload
         $taxRate = $product['tax_rate'] ?? 21;
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($taxRate);
 
+        // ============================================================================
+        // EXPERIMENTAL: Dejar que FacturaScripts calcule IVA automáticamente
+        // Para REVERTIR: descomentar bloque "CÓDIGO ORIGINAL" y eliminar bloque "NUEVO"
+        // ============================================================================
+
+        // === CÓDIGO ORIGINAL (comentado) ===
+        /*
         if ($codimpuesto) {
             // Mapeo encontrado: usar el codimpuesto mapeado
             $linea->codimpuesto = $codimpuesto;
@@ -875,6 +882,20 @@ class OrdersDownload
             $linea->pvpunitario * $linea->cantidad * (1 - $linea->dtopor / 100) * (1 - $linea->dtopor2 / 100),
             2
         );
+        */
+
+        // === CÓDIGO NUEVO (experimental) ===
+        if ($codimpuesto) {
+            // Mapeo encontrado: solo asignar codimpuesto, FacturaScripts calcula el IVA
+            $linea->codimpuesto = $codimpuesto;
+            // NO asignar $linea->iva manualmente - FacturaScripts lo calcula desde codimpuesto
+            // NO asignar $linea->pvptotal manualmente - FacturaScripts lo calcula automáticamente
+        } else {
+            // Sin mapeo: asignar IVA manualmente como fallback
+            $linea->iva = $taxRate;
+            Tools::log()->warning("⚠ IVA {$taxRate}% sin mapear para producto {$referencia}. Configura el mapeo de IVA en Prestashop → Mapeo de Tipos de IVA");
+        }
+        // ============================================================================
 
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
@@ -1038,8 +1059,9 @@ class OrdersDownload
         $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', 'ENVIO-PRESTASHOP')];
 
         if (!$variante->loadFromCode('', $where)) {
-            Tools::log()->warning("Producto 'Gastos de envío' no encontrado. Créalo con referencia ENVIO-PRESTASHOP");
-            return;
+            $error = "⚠ CRÍTICO: Producto 'Gastos de envío' con referencia ENVIO-PRESTASHOP no encontrado. Reinstala el plugin o créalo manualmente con IVA 21%.";
+            Tools::log()->critical($error);
+            throw new \Exception($error);
         }
 
         // IMPORTANTE: total_shipping viene CON IVA, hay que quitárselo
@@ -1057,6 +1079,12 @@ class OrdersDownload
 
         // Asignar codimpuesto correcto para el transporte
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaTransporte);
+
+        // EXPERIMENTAL: Dejar que FacturaScripts calcule IVA automáticamente
+        // Para REVERTIR: descomentar código original
+
+        // === CÓDIGO ORIGINAL (comentado) ===
+        /*
         if ($codimpuesto) {
             $linea->codimpuesto = $codimpuesto;
             $linea->iva = $ivaTransporte;
@@ -1068,6 +1096,17 @@ class OrdersDownload
 
         // Calcular pvptotal
         $linea->pvptotal = round($linea->pvpunitario * $linea->cantidad, 2);
+        */
+
+        // === CÓDIGO NUEVO (experimental) ===
+        if ($codimpuesto) {
+            $linea->codimpuesto = $codimpuesto;
+            // NO asignar IVA ni pvptotal - FacturaScripts lo calcula
+        } else {
+            // Fallback: solo IVA
+            $linea->iva = $ivaTransporte;
+            Tools::log()->warning("⚠ IVA {$ivaTransporte}% sin mapear para transporte. Configura el mapeo de IVA.");
+        }
 
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
@@ -1091,8 +1130,9 @@ class OrdersDownload
         $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', 'REGALO-PRESTASHOP')];
 
         if (!$variante->loadFromCode('', $where)) {
-            Tools::log()->warning("Producto 'Empaquetado para regalo' no encontrado. Créalo con referencia REGALO-PRESTASHOP");
-            return;
+            $error = "⚠ CRÍTICO: Producto 'Empaquetado para regalo' con referencia REGALO-PRESTASHOP no encontrado. Reinstala el plugin o créalo manualmente con IVA 21%.";
+            Tools::log()->critical($error);
+            throw new \Exception($error);
         }
 
         // IMPORTANTE: total_wrapping viene CON IVA, hay que quitárselo
@@ -1110,6 +1150,12 @@ class OrdersDownload
 
         // Asignar codimpuesto correcto para el empaquetado
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaRegalo);
+
+        // EXPERIMENTAL: Dejar que FacturaScripts calcule IVA automáticamente
+        // Para REVERTIR: descomentar código original
+
+        // === CÓDIGO ORIGINAL (comentado) ===
+        /*
         if ($codimpuesto) {
             $linea->codimpuesto = $codimpuesto;
             $linea->iva = $ivaRegalo;
@@ -1121,6 +1167,17 @@ class OrdersDownload
 
         // Calcular pvptotal
         $linea->pvptotal = round($linea->pvpunitario * $linea->cantidad, 2);
+        */
+
+        // === CÓDIGO NUEVO (experimental) ===
+        if ($codimpuesto) {
+            $linea->codimpuesto = $codimpuesto;
+            // NO asignar IVA ni pvptotal - FacturaScripts lo calcula
+        } else {
+            // Fallback: solo IVA
+            $linea->iva = $ivaRegalo;
+            Tools::log()->warning("⚠ IVA {$ivaRegalo}% sin mapear para empaquetado. Configura el mapeo de IVA.");
+        }
 
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
@@ -1154,8 +1211,14 @@ class OrdersDownload
         $linea->cantidad = 1;
         $linea->pvpunitario = -round($discountWithoutTax, 2); // Precio NEGATIVO sin IVA
 
-        // Asignar IVA 21%
+        // Asignar IVA según el pedido
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaDescuento);
+
+        // EXPERIMENTAL: Dejar que FacturaScripts calcule IVA automáticamente
+        // Para REVERTIR: descomentar código original
+
+        // === CÓDIGO ORIGINAL (comentado) ===
+        /*
         if ($codimpuesto) {
             $linea->codimpuesto = $codimpuesto;
             $linea->iva = $ivaDescuento;
@@ -1167,6 +1230,17 @@ class OrdersDownload
 
         // Calcular pvptotal
         $linea->pvptotal = round($linea->pvpunitario * $linea->cantidad, 2);
+        */
+
+        // === CÓDIGO NUEVO (experimental) ===
+        if ($codimpuesto) {
+            $linea->codimpuesto = $codimpuesto;
+            // NO asignar IVA ni pvptotal - FacturaScripts lo calcula
+        } else {
+            // Fallback: solo IVA
+            $linea->iva = $ivaDescuento;
+            Tools::log()->warning("⚠ IVA {$ivaDescuento}% sin mapear para descuento. Configura el mapeo de IVA.");
+        }
 
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
