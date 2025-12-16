@@ -860,13 +860,6 @@ class OrdersDownload
         $taxRate = $product['tax_rate'] ?? 21;
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($taxRate);
 
-        // ============================================================================
-        // EXPERIMENTAL: Dejar que FacturaScripts calcule IVA automáticamente
-        // Para REVERTIR: descomentar bloque "CÓDIGO ORIGINAL" y eliminar bloque "NUEVO"
-        // ============================================================================
-
-        // === CÓDIGO ORIGINAL (comentado) ===
-        /*
         if ($codimpuesto) {
             // Mapeo encontrado: usar el codimpuesto mapeado
             $linea->codimpuesto = $codimpuesto;
@@ -882,20 +875,6 @@ class OrdersDownload
             $linea->pvpunitario * $linea->cantidad * (1 - $linea->dtopor / 100) * (1 - $linea->dtopor2 / 100),
             2
         );
-        */
-
-        // === CÓDIGO NUEVO (experimental) ===
-        if ($codimpuesto) {
-            // Mapeo encontrado: solo asignar codimpuesto, FacturaScripts calcula el IVA
-            $linea->codimpuesto = $codimpuesto;
-            // NO asignar $linea->iva manualmente - FacturaScripts lo calcula desde codimpuesto
-            // NO asignar $linea->pvptotal manualmente - FacturaScripts lo calcula automáticamente
-        } else {
-            // Sin mapeo: asignar IVA manualmente como fallback
-            $linea->iva = $taxRate;
-            Tools::log()->warning("⚠ IVA {$taxRate}% sin mapear para producto {$referencia}. Configura el mapeo de IVA en Prestashop → Mapeo de Tipos de IVA");
-        }
-        // ============================================================================
 
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
@@ -1079,12 +1058,6 @@ class OrdersDownload
 
         // Asignar codimpuesto correcto para el transporte
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaTransporte);
-
-        // EXPERIMENTAL: Dejar que FacturaScripts calcule IVA automáticamente
-        // Para REVERTIR: descomentar código original
-
-        // === CÓDIGO ORIGINAL (comentado) ===
-        /*
         if ($codimpuesto) {
             $linea->codimpuesto = $codimpuesto;
             $linea->iva = $ivaTransporte;
@@ -1096,17 +1069,6 @@ class OrdersDownload
 
         // Calcular pvptotal
         $linea->pvptotal = round($linea->pvpunitario * $linea->cantidad, 2);
-        */
-
-        // === CÓDIGO NUEVO (experimental) ===
-        if ($codimpuesto) {
-            $linea->codimpuesto = $codimpuesto;
-            // NO asignar IVA ni pvptotal - FacturaScripts lo calcula
-        } else {
-            // Fallback: solo IVA
-            $linea->iva = $ivaTransporte;
-            Tools::log()->warning("⚠ IVA {$ivaTransporte}% sin mapear para transporte. Configura el mapeo de IVA.");
-        }
 
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
@@ -1150,12 +1112,6 @@ class OrdersDownload
 
         // Asignar codimpuesto correcto para el empaquetado
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaRegalo);
-
-        // EXPERIMENTAL: Dejar que FacturaScripts calcule IVA automáticamente
-        // Para REVERTIR: descomentar código original
-
-        // === CÓDIGO ORIGINAL (comentado) ===
-        /*
         if ($codimpuesto) {
             $linea->codimpuesto = $codimpuesto;
             $linea->iva = $ivaRegalo;
@@ -1167,17 +1123,6 @@ class OrdersDownload
 
         // Calcular pvptotal
         $linea->pvptotal = round($linea->pvpunitario * $linea->cantidad, 2);
-        */
-
-        // === CÓDIGO NUEVO (experimental) ===
-        if ($codimpuesto) {
-            $linea->codimpuesto = $codimpuesto;
-            // NO asignar IVA ni pvptotal - FacturaScripts lo calcula
-        } else {
-            // Fallback: solo IVA
-            $linea->iva = $ivaRegalo;
-            Tools::log()->warning("⚠ IVA {$ivaRegalo}% sin mapear para empaquetado. Configura el mapeo de IVA.");
-        }
 
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
@@ -1213,12 +1158,6 @@ class OrdersDownload
 
         // Asignar IVA según el pedido
         $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaDescuento);
-
-        // EXPERIMENTAL: Dejar que FacturaScripts calcule IVA automáticamente
-        // Para REVERTIR: descomentar código original
-
-        // === CÓDIGO ORIGINAL (comentado) ===
-        /*
         if ($codimpuesto) {
             $linea->codimpuesto = $codimpuesto;
             $linea->iva = $ivaDescuento;
@@ -1230,17 +1169,6 @@ class OrdersDownload
 
         // Calcular pvptotal
         $linea->pvptotal = round($linea->pvpunitario * $linea->cantidad, 2);
-        */
-
-        // === CÓDIGO NUEVO (experimental) ===
-        if ($codimpuesto) {
-            $linea->codimpuesto = $codimpuesto;
-            // NO asignar IVA ni pvptotal - FacturaScripts lo calcula
-        } else {
-            // Fallback: solo IVA
-            $linea->iva = $ivaDescuento;
-            Tools::log()->warning("⚠ IVA {$ivaDescuento}% sin mapear para descuento. Configura el mapeo de IVA.");
-        }
 
         // NO hay recargo de equivalencia
         $linea->recargo = 0;
