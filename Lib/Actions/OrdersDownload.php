@@ -709,8 +709,8 @@ class OrdersDownload
                     $cliente->tipoidfiscal = 'NIE'; // NIE: X/Y/Z + 7 dígitos + letra
                     Tools::log()->info("Creando cliente particular: {$nombrePersona} (NIE: {$vat_number})");
                 } else {
-                    $cliente->tipoidfiscal = 'NIF'; // Fallback genérico para formato no reconocible
-                    Tools::log()->info("Creando cliente particular: {$nombrePersona} (NIF: {$vat_number} - formato no estándar)");
+                    $cliente->tipoidfiscal = 'DNI'; // Fallback a DNI para particulares (compatible Verifactu)
+                    Tools::log()->info("Creando cliente particular: {$nombrePersona} (DNI: {$vat_number} - formato no estándar)");
                 }
             } elseif (!empty($dni)) {
                 $cliente->cifnif = $dni;
@@ -723,13 +723,13 @@ class OrdersDownload
                     $cliente->tipoidfiscal = 'NIE'; // NIE: X/Y/Z + 7 dígitos + letra
                     Tools::log()->info("Creando cliente particular: {$nombrePersona} (NIE: {$dni})");
                 } else {
-                    $cliente->tipoidfiscal = 'NIF'; // Fallback genérico para formato no reconocible
-                    Tools::log()->info("Creando cliente particular: {$nombrePersona} (NIF: {$dni} - formato no estándar)");
+                    $cliente->tipoidfiscal = 'DNI'; // Fallback a DNI para particulares (compatible Verifactu)
+                    Tools::log()->info("Creando cliente particular: {$nombrePersona} (DNI: {$dni} - formato no estándar)");
                 }
             } else {
                 // DNI único identificable por cliente (PSECOM + ID de PrestaShop)
                 $cliente->cifnif = 'PSECOM' . str_pad($customerId, 6, '0', STR_PAD_LEFT);
-                $cliente->tipoidfiscal = 'NIF'; // PSECOM siempre como NIF genérico
+                $cliente->tipoidfiscal = 'DNI'; // PSECOM para particulares siempre como DNI (compatible Verifactu)
                 Tools::log()->warning("Cliente {$customerId} sin DNI/CIF en PrestaShop. Usando DNI temporal: {$cliente->cifnif}" . (!empty($email) ? ". Email: {$email}" : ""));
             }
         }
