@@ -304,9 +304,8 @@ class OrdersDownload
         $albaran = new AlbaranCliente();
         $albaran->setSubject($cliente);
 
-        // IMPORTANTE: Forzar que NO tenga recargo de equivalencia
-        // Aunque el cliente tenga recargo, los pedidos de PrestaShop no lo usan
-        $albaran->codregimeniva = '';
+        // PUNTO 9: Respetar régimen IVA del cliente (incluyendo recargo de equivalencia)
+        // setSubject() ya copia regimeniva del cliente al albarán automáticamente
 
         $albaran->codalmacen = $this->config->codalmacen;
         $albaran->codserie = $this->config->codserie;
@@ -939,9 +938,10 @@ class OrdersDownload
             Tools::log()->warning("⚠ IVA {$taxRate}% sin mapear para producto {$referencia}. Configura el mapeo de IVA en Prestashop → Mapeo de Tipos de IVA");
         }
 
-        $linea->recargo = 0;
+        // PUNTO 9: NO forzar recargo = 0, dejar que Calculator lo calcule automáticamente
+        // si el cliente tiene recargo de equivalencia configurado
 
-        // PASO 2: Calculator calcula pvpsindto y pvptotal (con descuentos)
+        // PASO 2: Calculator calcula pvpsindto, pvptotal y recargo (si aplica)
         Calculator::calculateLine($albaran, $linea);
 
         // PASO 3: Guardar línea
@@ -1148,8 +1148,8 @@ class OrdersDownload
             $linea->iva = $ivaTransporte;
             Tools::log()->warning("⚠ IVA {$ivaTransporte}% sin mapear para transporte. Configura el mapeo de IVA.");
         }
-        $linea->recargo = 0;
-        Calculator::calculateLine($albaran, $linea); // Calculator calcula pvptotal
+        // PUNTO 9: NO forzar recargo = 0, Calculator lo calcula automáticamente
+        Calculator::calculateLine($albaran, $linea); // Calculator calcula pvptotal y recargo
         $linea->save();
 
         Tools::log()->info("✓ ENVÍO → Con IVA: {$shippingCostWithTax}€ | Sin IVA: {$linea->pvpunitario}€ | IVA: {$ivaTransporte}%");
@@ -1212,8 +1212,8 @@ class OrdersDownload
             $linea->iva = $ivaRegalo;
             Tools::log()->warning("⚠ IVA {$ivaRegalo}% sin mapear para empaquetado. Configura el mapeo de IVA.");
         }
-        $linea->recargo = 0;
-        Calculator::calculateLine($albaran, $linea); // Calculator calcula pvptotal
+        // PUNTO 9: NO forzar recargo = 0, Calculator lo calcula automáticamente
+        Calculator::calculateLine($albaran, $linea); // Calculator calcula pvptotal y recargo
         $linea->save();
 
         Tools::log()->info("✓ REGALO → Con IVA: {$wrappingCostWithTax}€ | Sin IVA: {$linea->pvpunitario}€ | IVA: {$ivaRegalo}%");
@@ -1268,8 +1268,8 @@ class OrdersDownload
             $linea->iva = $ivaDescuento;
             Tools::log()->warning("⚠ IVA {$ivaDescuento}% sin mapear para descuento. Configura el mapeo de IVA.");
         }
-        $linea->recargo = 0;
-        Calculator::calculateLine($albaran, $linea); // Calculator calcula pvptotal
+        // PUNTO 9: NO forzar recargo = 0, Calculator lo calcula automáticamente
+        Calculator::calculateLine($albaran, $linea); // Calculator calcula pvptotal y recargo
         $linea->save();
 
         Tools::log()->info("✓ DESCUENTO → '{$linea->descripcion}': Con IVA: -{$discountWithTax}€ | Sin IVA: {$linea->pvpunitario}€ | IVA: {$ivaDescuento}%");
@@ -1334,8 +1334,8 @@ class OrdersDownload
         $albaran->totaliva = round($totalIva, 2);
         $albaran->total = round($neto + $totalIva, 2);
 
-        // IMPORTANTE: NO hay recargo de equivalencia
-        $albaran->totalrecargo = 0;
+        // PUNTO 9: NO forzar totalrecargo = 0
+        // Esta función ya no se usa, ahora usamos Calculator::calculate() que calcula el recargo automáticamente
 
         // Guardar con totales calculados
         $albaran->save();
