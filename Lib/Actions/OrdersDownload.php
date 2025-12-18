@@ -414,47 +414,47 @@ class OrdersDownload
                     }
                 }
 
-            // Calcular ecotax sin IVA (PrestaShop lo trae CON IVA)
-            $ecotaxTaxExcl = 0.0;
-            if ($ecotaxTaxIncl > 0 && $ecotaxTaxRate > 0) {
-                $ecotaxTaxExcl = $ecotaxTaxIncl / (1 + ($ecotaxTaxRate / 100));
-            }
-
-            // IMPORTANTE: PrestaShop SUMA la ecotasa al precio del producto
-            // Debemos RESTAR la ecotasa del precio para tener el precio real del producto
-            $realProductPriceTaxIncl = $unitPriceTaxIncl;
-            $realProductPriceTaxExcl = $unitPriceTaxExcl;
-
-            if ($ecotaxTaxIncl > 0) {
-                // Restar ecotasa del precio (PrestaShop incluye ecotasa en unit_price)
-                $realProductPriceTaxIncl = $unitPriceTaxIncl - $ecotaxTaxIncl;
-                $realProductPriceTaxExcl = $unitPriceTaxExcl - $ecotaxTaxExcl;
-
-                Tools::log()->info("ECOTASA detectada: {$ecotaxTaxIncl}€ (con IVA) / " . round($ecotaxTaxExcl, 2) . "€ (sin IVA) - IVA: {$ecotaxTaxRate}%");
-                Tools::log()->info("Precio original: " . round($unitPriceTaxExcl, 2) . "€ → Precio real producto: " . round($realProductPriceTaxExcl, 2) . "€");
-            }
-
-            // Detectar el IVA correcto redondeando al legal más cercano (21%, 10%, 4%, 0%)
-            // En lugar de usar el IVA calculado con decimales raros
-            $taxRate = 21; // Por defecto 21%
-
-            if ($realProductPriceTaxExcl > 0 && $realProductPriceTaxIncl > $realProductPriceTaxExcl) {
-                // Calcular IVA aproximado desde los precios (usando precio real sin ecotasa)
-                $calculatedRate = (($realProductPriceTaxIncl / $realProductPriceTaxExcl) - 1) * 100;
-
-                // Redondear al IVA legal español más cercano
-                if ($calculatedRate >= 18) {
-                    $taxRate = 21; // IVA general
-                } elseif ($calculatedRate >= 7) {
-                    $taxRate = 10; // IVA reducido
-                } elseif ($calculatedRate >= 2) {
-                    $taxRate = 4;  // IVA superreducido
-                } else {
-                    $taxRate = 0;  // Exento
+                // Calcular ecotax sin IVA (PrestaShop lo trae CON IVA)
+                $ecotaxTaxExcl = 0.0;
+                if ($ecotaxTaxIncl > 0 && $ecotaxTaxRate > 0) {
+                    $ecotaxTaxExcl = $ecotaxTaxIncl / (1 + ($ecotaxTaxRate / 100));
                 }
-            } elseif ($realProductPriceTaxExcl == 0 || $realProductPriceTaxIncl == $realProductPriceTaxExcl) {
-                $taxRate = 0; // Sin IVA o exento
-            }
+
+                // IMPORTANTE: PrestaShop SUMA la ecotasa al precio del producto
+                // Debemos RESTAR la ecotasa del precio para tener el precio real del producto
+                $realProductPriceTaxIncl = $unitPriceTaxIncl;
+                $realProductPriceTaxExcl = $unitPriceTaxExcl;
+
+                if ($ecotaxTaxIncl > 0) {
+                    // Restar ecotasa del precio (PrestaShop incluye ecotasa en unit_price)
+                    $realProductPriceTaxIncl = $unitPriceTaxIncl - $ecotaxTaxIncl;
+                    $realProductPriceTaxExcl = $unitPriceTaxExcl - $ecotaxTaxExcl;
+
+                    Tools::log()->info("ECOTASA detectada: {$ecotaxTaxIncl}€ (con IVA) / " . round($ecotaxTaxExcl, 2) . "€ (sin IVA) - IVA: {$ecotaxTaxRate}%");
+                    Tools::log()->info("Precio original: " . round($unitPriceTaxExcl, 2) . "€ → Precio real producto: " . round($realProductPriceTaxExcl, 2) . "€");
+                }
+
+                // Detectar el IVA correcto redondeando al legal más cercano (21%, 10%, 4%, 0%)
+                // En lugar de usar el IVA calculado con decimales raros
+                $taxRate = 21; // Por defecto 21%
+
+                if ($realProductPriceTaxExcl > 0 && $realProductPriceTaxIncl > $realProductPriceTaxExcl) {
+                    // Calcular IVA aproximado desde los precios (usando precio real sin ecotasa)
+                    $calculatedRate = (($realProductPriceTaxIncl / $realProductPriceTaxExcl) - 1) * 100;
+
+                    // Redondear al IVA legal español más cercano
+                    if ($calculatedRate >= 18) {
+                        $taxRate = 21; // IVA general
+                    } elseif ($calculatedRate >= 7) {
+                        $taxRate = 10; // IVA reducido
+                    } elseif ($calculatedRate >= 2) {
+                        $taxRate = 4;  // IVA superreducido
+                    } else {
+                        $taxRate = 0;  // Exento
+                    }
+                } elseif ($realProductPriceTaxExcl == 0 || $realProductPriceTaxIncl == $realProductPriceTaxExcl) {
+                    $taxRate = 0; // Sin IVA o exento
+                }
 
                 $products[] = [
                     'product_id' => $productId,
