@@ -300,6 +300,10 @@ class OrdersDownload
         $codcliente = $cliente->codcliente;
         $nombrecliente = $cliente->nombre;
 
+        // ECOTASA: Verificar que existe el producto ECOTASA-PRESTASHOP en FacturaScripts
+        // Solo se verificará si el pedido tiene productos con ecotasa
+        $this->verifyEcotaxProductExists();
+
         // Crear albarán
         $albaran = new AlbaranCliente();
         $albaran->setSubject($cliente);
@@ -398,13 +402,37 @@ class OrdersDownload
                 $unitPriceTaxIncl = (float)$row->unit_price_tax_incl;
                 $unitPriceTaxExcl = (float)$row->unit_price_tax_excl;
 
+                // ECOTASA: Leer ecotax desde PrestaShop (viene con IVA incluido)
+                $ecotaxTaxIncl = isset($row->ecotax) ? (float)$row->ecotax : 0.0;
+                $ecotaxTaxRate = isset($row->ecotax_tax_rate) ? (float)$row->ecotax_tax_rate : 21.0;
+
+                // Calcular ecotax sin IVA (PrestaShop lo trae CON IVA)
+                $ecotaxTaxExcl = 0.0;
+                if ($ecotaxTaxIncl > 0 && $ecotaxTaxRate > 0) {
+                    $ecotaxTaxExcl = $ecotaxTaxIncl / (1 + ($ecotaxTaxRate / 100));
+                }
+
+                // IMPORTANTE: PrestaShop SUMA la ecotasa al precio del producto
+                // Debemos RESTAR la ecotasa del precio para tener el precio real del producto
+                $realProductPriceTaxIncl = $unitPriceTaxIncl;
+                $realProductPriceTaxExcl = $unitPriceTaxExcl;
+
+                if ($ecotaxTaxIncl > 0) {
+                    // Restar ecotasa del precio (PrestaShop incluye ecotasa en unit_price)
+                    $realProductPriceTaxIncl = $unitPriceTaxIncl - $ecotaxTaxIncl;
+                    $realProductPriceTaxExcl = $unitPriceTaxExcl - $ecotaxTaxExcl;
+
+                    Tools::log()->info("ECOTASA detectada: {$ecotaxTaxIncl}€ (con IVA) / {$ecotaxTaxExcl}€ (sin IVA) - IVA: {$ecotaxTaxRate}%");
+                    Tools::log()->info("Precio original: {$unitPriceTaxExcl}€ → Precio real producto: {$realProductPriceTaxExcl}€");
+                }
+
                 // Detectar el IVA correcto redondeando al legal más cercano (21%, 10%, 4%, 0%)
                 // En lugar de usar el IVA calculado con decimales raros
                 $taxRate = 21; // Por defecto 21%
 
-                if ($unitPriceTaxExcl > 0 && $unitPriceTaxIncl > $unitPriceTaxExcl) {
-                    // Calcular IVA aproximado desde los precios
-                    $calculatedRate = (($unitPriceTaxIncl / $unitPriceTaxExcl) - 1) * 100;
+                if ($realProductPriceTaxExcl > 0 && $realProductPriceTaxIncl > $realProductPriceTaxExcl) {
+                    // Calcular IVA aproximado desde los precios (usando precio real sin ecotasa)
+                    $calculatedRate = (($realProductPriceTaxIncl / $realProductPriceTaxExcl) - 1) * 100;
 
                     // Redondear al IVA legal español más cercano
                     if ($calculatedRate >= 18) {
@@ -416,7 +444,7 @@ class OrdersDownload
                     } else {
                         $taxRate = 0;  // Exento
                     }
-                } elseif ($unitPriceTaxExcl == 0 || $unitPriceTaxIncl == $unitPriceTaxExcl) {
+                } elseif ($realProductPriceTaxExcl == 0 || $realProductPriceTaxIncl == $realProductPriceTaxExcl) {
                     $taxRate = 0; // Sin IVA o exento
                 }
 
@@ -425,9 +453,12 @@ class OrdersDownload
                     'product_reference' => (string)$row->product_reference,
                     'product_name' => (string)$row->product_name,
                     'product_quantity' => (int)$row->product_quantity,
-                    'unit_price_tax_incl' => $unitPriceTaxIncl,
-                    'unit_price_tax_excl' => $unitPriceTaxExcl,
+                    'unit_price_tax_incl' => $realProductPriceTaxIncl,  // Precio real SIN ecotasa
+                    'unit_price_tax_excl' => $realProductPriceTaxExcl,  // Precio real SIN ecotasa
                     'tax_rate' => $taxRate,  // IVA legal correcto (21, 10, 4, 0)
+                    'ecotax_tax_incl' => $ecotaxTaxIncl,  // Ecotasa CON IVA
+                    'ecotax_tax_excl' => $ecotaxTaxExcl,  // Ecotasa SIN IVA
+                    'ecotax_tax_rate' => $ecotaxTaxRate,  // IVA de la ecotasa
                 ];
             }
         }
@@ -437,7 +468,19 @@ class OrdersDownload
         }
 
         foreach ($products as $product) {
+            // Añadir línea de producto
             $this->addLineaAlbaran($albaran, $product);
+
+            // ECOTASA: Si el producto tiene ecotasa, añadir línea de ecotasa inmediatamente después
+            if ($product['ecotax_tax_excl'] > 0) {
+                $this->addEcotaxLine(
+                    $albaran,
+                    $product['ecotax_tax_excl'],      // Ecotasa SIN IVA
+                    $product['ecotax_tax_rate'],      // IVA de la ecotasa
+                    $product['product_quantity'],      // Misma cantidad que el producto
+                    $product['product_name']           // Nombre del producto (para logs)
+                );
+            }
         }
 
         // Detectar si todos los productos tienen IVA 0% (pedido exento)
@@ -474,6 +517,22 @@ class OrdersDownload
             // Intentar obtener el nombre del cupón/descuento
             $discountName = $this->getDiscountName($orderXml);
             $this->addDiscountLine($albaran, $totalDiscountWithTax, $discountName, $ivaTransporteDescuento);
+        }
+
+        // ECOTASA: Si hay productos con ecotasa, añadir texto legal a observaciones
+        $hasEcotax = false;
+        foreach ($products as $product) {
+            if ($product['ecotax_tax_excl'] > 0) {
+                $hasEcotax = true;
+                break;
+            }
+        }
+
+        if ($hasEcotax) {
+            // Añadir texto legal SIN borrar el existente
+            $textoLegal = "\n\nEcotasa AT. Ecotasa S.I Gestión NFU -RD 731/2020-\nNº de Registro de productos: O00002023e2100205757-\nNº de Registro de productores: NEU/2021/000000063";
+            $albaran->observaciones .= $textoLegal;
+            Tools::log()->info("✓ Texto legal de ecotasa añadido a observaciones");
         }
 
         // === CÓDIGO ANTIGUO (comentado) ===
@@ -1341,6 +1400,83 @@ class OrdersDownload
         $albaran->save();
 
         Tools::log()->debug("Totales calculados - Neto: {$albaran->neto}, IVA: {$albaran->totaliva}, Total: {$albaran->total}");
+    }
+
+    /**
+     * ECOTASA: Verifica que existe el producto ECOTASA-PRESTASHOP en FacturaScripts
+     */
+    private function verifyEcotaxProductExists(): void
+    {
+        // Verificar solo una vez (variable estática)
+        static $verified = false;
+        if ($verified) {
+            return;
+        }
+
+        $variante = new Variante();
+        $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', 'ECOTASA-PRESTASHOP')];
+
+        if (!$variante->loadFromCode('', $where)) {
+            $error = "⚠ CRÍTICO: Producto 'Ecotasa Neumáticos' con referencia ECOTASA-PRESTASHOP no encontrado. Crea el producto manualmente:\n" .
+                     "  - Referencia: ECOTASA-PRESTASHOP\n" .
+                     "  - Descripción: Ecotasa NFU (Neumáticos Fuera de Uso)\n" .
+                     "  - Tipo: Servicio\n" .
+                     "  - IVA: 21% (o según corresponda)";
+            Tools::log()->critical($error);
+            throw new \Exception($error);
+        }
+
+        $verified = true;
+        Tools::log()->info("✓ Producto ECOTASA-PRESTASHOP verificado");
+    }
+
+    /**
+     * ECOTASA: Añade línea de ecotasa al albarán
+     *
+     * @param AlbaranCliente $albaran Albarán al que añadir la ecotasa
+     * @param float $ecotaxWithoutTax Importe de ecotasa SIN IVA (por unidad)
+     * @param float $ivaEcotasa IVA de la ecotasa (normalmente 21%)
+     * @param int $quantity Cantidad de unidades (mismo que el producto)
+     * @param string $productName Nombre del producto (para logs)
+     */
+    private function addEcotaxLine(AlbaranCliente $albaran, float $ecotaxWithoutTax, float $ivaEcotasa, int $quantity, string $productName): void
+    {
+        // Buscar el producto de ecotasa
+        $variante = new Variante();
+        $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', 'ECOTASA-PRESTASHOP')];
+
+        if (!$variante->loadFromCode('', $where)) {
+            $error = "⚠ CRÍTICO: Producto 'Ecotasa Neumáticos' con referencia ECOTASA-PRESTASHOP no encontrado.";
+            Tools::log()->critical($error);
+            throw new \Exception($error);
+        }
+
+        // Crear línea de ecotasa
+        $linea = new LineaAlbaranCliente();
+        $linea->idalbaran = $albaran->idalbaran;
+        $linea->referencia = $variante->referencia;
+        $linea->idproducto = $variante->idproducto;
+        $linea->descripcion = 'Ecotasa NFU - ' . $productName;  // Descripción personalizada con nombre del producto
+        $linea->cantidad = $quantity;
+        $linea->pvpunitario = round($ecotaxWithoutTax, 2);  // Precio SIN IVA por unidad
+
+        // Asignar IVA de la ecotasa
+        $codimpuesto = PrestashopTaxMap::getCodImpuesto($ivaEcotasa);
+
+        if ($codimpuesto) {
+            $linea->codimpuesto = $codimpuesto;
+            $linea->iva = $ivaEcotasa;
+        } else {
+            $linea->iva = $ivaEcotasa;
+            Tools::log()->warning("⚠ IVA {$ivaEcotasa}% sin mapear para ecotasa. Configura el mapeo de IVA.");
+        }
+
+        // Calculator calcula pvptotal y recargo (si aplica)
+        Calculator::calculateLine($albaran, $linea);
+        $linea->save();
+
+        $ecotaxConIva = round($ecotaxWithoutTax * (1 + $ivaEcotasa / 100), 2);
+        Tools::log()->info("✓ ECOTASA → Cant: {$quantity} | Sin IVA: {$linea->pvpunitario}€ | IVA: {$ivaEcotasa}% | Con IVA: {$ecotaxConIva}€");
     }
 
     /**
