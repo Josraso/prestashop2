@@ -260,6 +260,54 @@ class PrestashopConnection
     }
 
     /**
+     * Obtiene los detalles de un pedido (order_details) con campos ecotax
+     * Este endpoint incluye campos que NO están en order_rows como ecotax
+     *
+     * @param int $orderId ID del pedido
+     * @return array Array de order_details con campos ecotax
+     */
+    public function getOrderDetails(int $orderId): array
+    {
+        if (!$this->isConnected()) {
+            return [];
+        }
+
+        try {
+            // Obtener order_details filtrados por id_order con display=full
+            $params = [
+                'filter[id_order]' => '[' . $orderId . ']',
+                'display' => 'full'
+            ];
+
+            $xmlString = $this->webService->get('order_details?' . http_build_query($params));
+            $xml = simplexml_load_string($xmlString);
+
+            $details = [];
+            if (isset($xml->order_details->order_detail)) {
+                foreach ($xml->order_details->order_detail as $detail) {
+                    $details[] = [
+                        'id_order_detail' => (int)$detail->id,
+                        'product_id' => (int)$detail->product_id,
+                        'product_reference' => (string)$detail->product_reference,
+                        'product_name' => (string)$detail->product_name,
+                        'product_quantity' => (int)$detail->product_quantity,
+                        'unit_price_tax_incl' => (float)$detail->unit_price_tax_incl,
+                        'unit_price_tax_excl' => (float)$detail->unit_price_tax_excl,
+                        'total_price_tax_incl' => (float)$detail->total_price_tax_incl,
+                        'total_price_tax_excl' => (float)$detail->total_price_tax_excl,
+                        'ecotax' => (float)$detail->ecotax,  // ECOTASA CON IVA
+                        'ecotax_tax_rate' => (float)$detail->ecotax_tax_rate,  // IVA de la ecotasa
+                    ];
+                }
+            }
+
+            return $details;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * Obtiene la dirección de un pedido
      */
     public function getAddress(int $addressId): ?\SimpleXMLElement
