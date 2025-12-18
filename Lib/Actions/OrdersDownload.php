@@ -402,6 +402,15 @@ class OrdersDownload
                 $unitPriceTaxIncl = (float)$row->unit_price_tax_incl;
                 $unitPriceTaxExcl = (float)$row->unit_price_tax_excl;
 
+                // DEBUG: Ver qué campos tiene order_row
+                Tools::log()->debug("=== DEBUG ORDER_ROW ===");
+                Tools::log()->debug("product_id: " . (string)$row->product_id);
+                Tools::log()->debug("product_reference: " . (string)$row->product_reference);
+                Tools::log()->debug("Campos disponibles: " . print_r($row, true));
+                Tools::log()->debug("¿Tiene ecotax? " . (isset($row->ecotax) ? "SÍ: " . $row->ecotax : "NO"));
+                Tools::log()->debug("¿Tiene ecotax_tax_rate? " . (isset($row->ecotax_tax_rate) ? "SÍ: " . $row->ecotax_tax_rate : "NO"));
+                Tools::log()->debug("=====================");
+
                 // ECOTASA: Leer ecotax desde PrestaShop (viene con IVA incluido)
                 $ecotaxTaxIncl = isset($row->ecotax) ? (float)$row->ecotax : 0.0;
                 $ecotaxTaxRate = isset($row->ecotax_tax_rate) ? (float)$row->ecotax_tax_rate : 21.0;
