@@ -275,7 +275,7 @@ class PrestashopConnection
         try {
             // Obtener order_details filtrados por id_order con display=full
             $params = [
-                'filter[id_order]' => '[' . $orderId . ']',
+                'filter[id_order]' => $orderId,  // SIN corchetes en el valor
                 'display' => 'full'
             ];
 
