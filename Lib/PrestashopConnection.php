@@ -303,6 +303,8 @@ class PrestashopConnection
 
             return $details;
         } catch (\Exception $e) {
+            // Log del error para debug
+            error_log("ERROR getOrderDetails(): " . $e->getMessage());
             return [];
         }
     }

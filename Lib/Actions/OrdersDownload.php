@@ -429,6 +429,9 @@ class OrdersDownload
             $ecotaxTaxIncl = $detail['ecotax'];
             $ecotaxTaxRate = $detail['ecotax_tax_rate'] > 0 ? $detail['ecotax_tax_rate'] : 21.0;
 
+            // DEBUG: Ver exactamente qué valor tiene ecotax para cada producto
+            Tools::log()->debug("DEBUG ECOTAX → Producto: {$detail['product_reference']} | ecotax: {$ecotaxTaxIncl} | ecotax_tax_rate: {$ecotaxTaxRate}");
+
             // Calcular ecotax sin IVA (PrestaShop lo trae CON IVA)
             $ecotaxTaxExcl = 0.0;
             if ($ecotaxTaxIncl > 0 && $ecotaxTaxRate > 0) {
