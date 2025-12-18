@@ -260,6 +260,38 @@ class PrestashopConnection
     }
 
     /**
+     * Obtiene un producto específico con ecotax desde ps_product.ecotax
+     *
+     * @param int $productId ID del producto
+     * @return array|null Datos del producto con ecotax o null si falla
+     */
+    public function getProduct(int $productId): ?array
+    {
+        if (!$this->isConnected()) {
+            return null;
+        }
+
+        try {
+            $xmlString = $this->webService->get("products/{$productId}");
+            $xml = simplexml_load_string($xmlString);
+
+            if (!isset($xml->product)) {
+                return null;
+            }
+
+            $product = $xml->product;
+
+            return [
+                'id' => (int)$product->id,
+                'ecotax' => (float)$product->ecotax,  // ECOTASA del producto (con IVA incluido)
+            ];
+        } catch (\Exception $e) {
+            error_log("ERROR getProduct({$productId}): " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Obtiene los detalles de un pedido (order_details) con campos ecotax
      * Este endpoint incluye campos que NO están en order_rows como ecotax
      *

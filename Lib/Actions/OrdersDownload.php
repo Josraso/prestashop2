@@ -394,43 +394,25 @@ class OrdersDownload
         }
 
         // Importar líneas de pedido
-        // ECOTASA: Usar order_details en lugar de order_rows porque incluye campos ecotax
-        // order_rows NO tiene los campos ecotax, por eso debemos usar order_details desde el API
-        Tools::log()->info("Obteniendo order_details desde API PrestaShop (incluye ecotax)...");
-        $orderDetails = $this->connection->getOrderDetails($orderId);
-
-        if (empty($orderDetails)) {
-            Tools::log()->warning("No se pudieron obtener order_details. Usando order_rows como fallback (sin ecotax)...");
-            // Fallback a order_rows si order_details falla (pero no tendrá ecotax)
-            if (isset($orderXml->associations->order_rows->order_row)) {
-                foreach ($orderXml->associations->order_rows->order_row as $row) {
-                    $orderDetails[] = [
-                        'product_id' => (int)$row->product_id,
-                        'product_reference' => (string)$row->product_reference,
-                        'product_name' => (string)$row->product_name,
-                        'product_quantity' => (int)$row->product_quantity,
-                        'unit_price_tax_incl' => (float)$row->unit_price_tax_incl,
-                        'unit_price_tax_excl' => (float)$row->unit_price_tax_excl,
-                        'ecotax' => 0.0,  // order_rows NO tiene ecotax
-                        'ecotax_tax_rate' => 21.0,
-                    ];
-                }
-            }
-        }
-
-        Tools::log()->info("Procesando " . count($orderDetails) . " líneas de pedido con datos de ecotax...");
-
+        // ECOTASA: Obtener desde el PRODUCTO directamente (ps_product.ecotax)
         $products = [];
-        foreach ($orderDetails as $detail) {
-            $unitPriceTaxIncl = $detail['unit_price_tax_incl'];
-            $unitPriceTaxExcl = $detail['unit_price_tax_excl'];
+        if (isset($orderXml->associations->order_rows->order_row)) {
+            foreach ($orderXml->associations->order_rows->order_row as $row) {
+                $unitPriceTaxIncl = (float)$row->unit_price_tax_incl;
+                $unitPriceTaxExcl = (float)$row->unit_price_tax_excl;
+                $productId = (int)$row->product_id;
 
-            // ECOTASA: Leer ecotax desde order_details (viene con IVA incluido)
-            $ecotaxTaxIncl = $detail['ecotax'];
-            $ecotaxTaxRate = $detail['ecotax_tax_rate'] > 0 ? $detail['ecotax_tax_rate'] : 21.0;
+                // ECOTASA: Obtener desde el producto directamente
+                $ecotaxTaxIncl = 0.0;
+                $ecotaxTaxRate = 21.0;
 
-            // DEBUG: Ver exactamente qué valor tiene ecotax para cada producto
-            Tools::log()->debug("DEBUG ECOTAX → Producto: {$detail['product_reference']} | ecotax: {$ecotaxTaxIncl} | ecotax_tax_rate: {$ecotaxTaxRate}");
+                if ($productId > 0) {
+                    $productData = $this->connection->getProduct($productId);
+                    if ($productData && isset($productData['ecotax']) && $productData['ecotax'] > 0) {
+                        $ecotaxTaxIncl = $productData['ecotax'];
+                        Tools::log()->info("ECOTAX desde producto {$productId}: {$ecotaxTaxIncl}€");
+                    }
+                }
 
             // Calcular ecotax sin IVA (PrestaShop lo trae CON IVA)
             $ecotaxTaxExcl = 0.0;
@@ -474,18 +456,19 @@ class OrdersDownload
                 $taxRate = 0; // Sin IVA o exento
             }
 
-            $products[] = [
-                'product_id' => $detail['product_id'],
-                'product_reference' => $detail['product_reference'],
-                'product_name' => $detail['product_name'],
-                'product_quantity' => $detail['product_quantity'],
-                'unit_price_tax_incl' => $realProductPriceTaxIncl,  // Precio real SIN ecotasa
-                'unit_price_tax_excl' => $realProductPriceTaxExcl,  // Precio real SIN ecotasa
-                'tax_rate' => $taxRate,  // IVA legal correcto (21, 10, 4, 0)
-                'ecotax_tax_incl' => $ecotaxTaxIncl,  // Ecotasa CON IVA
-                'ecotax_tax_excl' => $ecotaxTaxExcl,  // Ecotasa SIN IVA
-                'ecotax_tax_rate' => $ecotaxTaxRate,  // IVA de la ecotasa
-            ];
+                $products[] = [
+                    'product_id' => $productId,
+                    'product_reference' => (string)$row->product_reference,
+                    'product_name' => (string)$row->product_name,
+                    'product_quantity' => (int)$row->product_quantity,
+                    'unit_price_tax_incl' => $realProductPriceTaxIncl,  // Precio real SIN ecotasa
+                    'unit_price_tax_excl' => $realProductPriceTaxExcl,  // Precio real SIN ecotasa
+                    'tax_rate' => $taxRate,  // IVA legal correcto (21, 10, 4, 0)
+                    'ecotax_tax_incl' => $ecotaxTaxIncl,  // Ecotasa CON IVA
+                    'ecotax_tax_excl' => $ecotaxTaxExcl,  // Ecotasa SIN IVA
+                    'ecotax_tax_rate' => $ecotaxTaxRate,  // IVA de la ecotasa
+                ];
+            }
         }
 
         if (empty($products)) {
