@@ -300,7 +300,7 @@ class OrdersDownload
         $codcliente = $cliente->codcliente;
         $nombrecliente = $cliente->nombre;
 
-        // ECOTASA: Verificar que existe el producto ECOTASA-PRESTASHOP en FacturaScripts
+        // ECOTASA: Verificar que existe el producto ECOTAX en FacturaScripts
         // Solo se verificará si el pedido tiene productos con ecotasa
         $this->verifyEcotaxProductExists();
 
@@ -1411,7 +1411,7 @@ class OrdersDownload
     }
 
     /**
-     * ECOTASA: Verifica que existe el producto ECOTASA-PRESTASHOP en FacturaScripts
+     * ECOTASA: Verifica que existe el producto ECOTAX en FacturaScripts
      */
     private function verifyEcotaxProductExists(): void
     {
@@ -1422,11 +1422,11 @@ class OrdersDownload
         }
 
         $variante = new Variante();
-        $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', 'ECOTASA-PRESTASHOP')];
+        $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', 'ECOTAX')];
 
         if (!$variante->loadFromCode('', $where)) {
-            $error = "⚠ CRÍTICO: Producto 'Ecotasa Neumáticos' con referencia ECOTASA-PRESTASHOP no encontrado. Crea el producto manualmente:\n" .
-                     "  - Referencia: ECOTASA-PRESTASHOP\n" .
+            $error = "⚠ CRÍTICO: Producto 'Ecotasa Neumáticos' con referencia ECOTAX no encontrado. Crea el producto manualmente:\n" .
+                     "  - Referencia: ECOTAX\n" .
                      "  - Descripción: Ecotasa NFU (Neumáticos Fuera de Uso)\n" .
                      "  - Tipo: Servicio\n" .
                      "  - IVA: 21% (o según corresponda)";
@@ -1435,7 +1435,7 @@ class OrdersDownload
         }
 
         $verified = true;
-        Tools::log()->info("✓ Producto ECOTASA-PRESTASHOP verificado");
+        Tools::log()->info("✓ Producto ECOTAX verificado");
     }
 
     /**
@@ -1451,10 +1451,10 @@ class OrdersDownload
     {
         // Buscar el producto de ecotasa
         $variante = new Variante();
-        $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', 'ECOTASA-PRESTASHOP')];
+        $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', 'ECOTAX')];
 
         if (!$variante->loadFromCode('', $where)) {
-            $error = "⚠ CRÍTICO: Producto 'Ecotasa Neumáticos' con referencia ECOTASA-PRESTASHOP no encontrado.";
+            $error = "⚠ CRÍTICO: Producto 'Ecotasa Neumáticos' con referencia ECOTAX no encontrado.";
             Tools::log()->critical($error);
             throw new \Exception($error);
         }

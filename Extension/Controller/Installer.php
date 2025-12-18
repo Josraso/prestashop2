@@ -18,6 +18,9 @@ class Installer
 
         // Crear producto "Empaquetado para regalo" si no existe
         $this->createGiftWrappingProduct();
+
+        // Crear producto "Ecotasa Neumáticos" si no existe
+        $this->createEcotaxProduct();
     }
 
     public function uninstall()
@@ -80,6 +83,36 @@ class Installer
             $variante = $producto->getVariants()[0] ?? null;
             if ($variante) {
                 $variante->referencia = 'REGALO-PRESTASHOP';
+                $variante->save();
+            }
+        }
+    }
+
+    private function createEcotaxProduct(): void
+    {
+        // Buscar si ya existe el producto
+        $variante = new Variante();
+        $where = [new DataBaseWhere('referencia', 'ECOTAX')];
+
+        if ($variante->loadFromCode('', $where)) {
+            // Ya existe, no hacer nada
+            return;
+        }
+
+        // Crear el producto
+        $producto = new Producto();
+        $producto->descripcion = 'Ecotasa NFU (Neumáticos Fuera de Uso)';
+        $producto->precio = 0; // El precio se establece dinámicamente desde PrestaShop
+        $producto->nostock = true;
+        $producto->ventasinstock = true;
+        $producto->bloqueado = false;
+        $producto->codimpuesto = 'IVA21'; // IVA de la ecotasa (21% por defecto)
+
+        if ($producto->save()) {
+            // Actualizar la variante con la referencia
+            $variante = $producto->getVariants()[0] ?? null;
+            if ($variante) {
+                $variante->referencia = 'ECOTAX';
                 $variante->save();
             }
         }
