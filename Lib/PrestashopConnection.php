@@ -273,7 +273,8 @@ class PrestashopConnection
 
         try {
             // Usar JSON en lugar de XML - más rápido y simple
-            $jsonString = $this->webService->get("products/{$productId}?output_format=JSON");
+            // Pasar output_format como parámetro (4º argumento), NO en la URL
+            $jsonString = $this->webService->get("products/{$productId}", null, null, ['output_format' => 'JSON']);
             $data = json_decode($jsonString, true);
 
             if (!$data) {
