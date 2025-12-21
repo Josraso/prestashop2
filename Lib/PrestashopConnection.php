@@ -276,7 +276,8 @@ class PrestashopConnection
 
         // ESTRATEGIA 1: Intentar primero con JSON (más rápido)
         try {
-            $jsonString = $this->webService->get("products/{$productId}", null, null, ['output_format' => 'JSON']);
+            // Usar segundo parámetro para ID, como en getOrders (línea 155)
+            $jsonString = $this->webService->get('products', $productId, null, ['output_format' => 'JSON']);
             $data = json_decode($jsonString, true);
 
             if ($data) {
@@ -316,11 +317,13 @@ class PrestashopConnection
         if (!$foundInJson) {
             try {
                 \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Intentando XML como fallback...");
-                $xmlString = $this->webService->get("products/{$productId}");
+                // Usar segundo parámetro para ID
+                $xmlString = $this->webService->get('products', $productId);
 
                 // Buscar ecotax directamente en el string XML (método infalible)
-                if (preg_match('/<ecotax[^>]*>(.*?)<\/ecotax>/i', $xmlString, $matches)) {
-                    $ecotaxValue = $matches[1];
+                if (preg_match('/<ecotax[^>]*>(.*?)<\/ecotax>/is', $xmlString, $matches)) {
+                    // Limpiar CDATA si existe: <![CDATA[ 0.702479 ]]> → 0.702479
+                    $ecotaxValue = trim(str_replace(['<![CDATA[', ']]>'], '', $matches[1]));
                     $ecotax = is_numeric($ecotaxValue) ? (float)$ecotaxValue : 0.0;
                     \FacturaScripts\Core\Tools::log()->info("getProduct({$productId}): ✓ Encontrado en XML con regex → ecotax = {$ecotax}€");
                 } else {
