@@ -271,71 +271,70 @@ class PrestashopConnection
             return null;
         }
 
+        $ecotax = 0.0;
+        $foundInJson = false;
+
+        // ESTRATEGIA 1: Intentar primero con JSON (más rápido)
         try {
-            // Usar JSON en lugar de XML - más rápido y simple
-            // Intentar con parámetro en array (4º argumento)
             $jsonString = $this->webService->get("products/{$productId}", null, null, ['output_format' => 'JSON']);
             $data = json_decode($jsonString, true);
 
-            if (!$data) {
-                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Error al parsear JSON");
-                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Respuesta raw: " . substr($jsonString, 0, 500));
-                return null;
-            }
+            if ($data) {
+                // COMPATIBILIDAD: Manejar diferentes estructuras de respuesta
+                $product = null;
 
-            // DEBUG: Ver estructura del JSON recibido
-            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Claves raíz JSON: " . implode(', ', array_keys($data)));
+                // Opción 1: {"products": [{"id": ..., "ecotax": ...}]}  - ARRAY
+                if (isset($data['products'][0])) {
+                    $product = $data['products'][0];
+                }
+                // Opción 2: {"prestashop": {"product": {...}}}
+                elseif (isset($data['prestashop']['product'])) {
+                    $product = $data['prestashop']['product'];
+                }
+                // Opción 3: {"product": {...}}
+                elseif (isset($data['product'])) {
+                    $product = $data['product'];
+                }
+                // Opción 4: {"id": ...} directo
+                elseif (isset($data['id'])) {
+                    $product = $data;
+                }
 
-            // COMPATIBILIDAD: Manejar diferentes estructuras de respuesta
-            $product = null;
-
-            // Opción 1: {"products": [{"id": ..., "ecotax": ...}]}  - ARRAY
-            if (isset($data['products'][0])) {
-                $product = $data['products'][0];
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON con array 'products[0]' ✓");
+                // Si encontramos el producto en JSON, intentar leer ecotax
+                if ($product && isset($product['ecotax'])) {
+                    $ecotaxValue = $product['ecotax'];
+                    $ecotax = is_numeric($ecotaxValue) ? (float)$ecotaxValue : 0.0;
+                    $foundInJson = true;
+                    \FacturaScripts\Core\Tools::log()->info("getProduct({$productId}): Leído de JSON → ecotax = {$ecotax}€");
+                }
             }
-            // Opción 2: {"prestashop": {"product": {...}}}
-            elseif (isset($data['prestashop']['product'])) {
-                $product = $data['prestashop']['product'];
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON con wrapper 'prestashop.product'");
-            }
-            // Opción 3: {"product": {...}}
-            elseif (isset($data['product'])) {
-                $product = $data['product'];
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON con wrapper 'product'");
-            }
-            // Opción 4: {"id": ...} directo
-            elseif (isset($data['id'])) {
-                $product = $data;
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON directo sin wrapper");
-            }
-            // No se encontró estructura válida
-            else {
-                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Estructura JSON no reconocida");
-                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): JSON completo: " . substr($jsonString, 0, 1000));
-                return null;
-            }
-
-            // Leer ecotax - puede venir como string, float, o vacío
-            $ecotax = 0.0;
-            if (isset($product['ecotax'])) {
-                $ecotaxValue = $product['ecotax'];
-                // Convertir a float manejando strings vacíos
-                $ecotax = is_numeric($ecotaxValue) ? (float)$ecotaxValue : 0.0;
-
-                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): ecotax raw = '{$ecotaxValue}' → parsed = {$ecotax}");
-            } else {
-                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): campo 'ecotax' no existe en JSON");
-            }
-
-            return [
-                'id' => (int)$product['id'],
-                'ecotax' => $ecotax,  // ECOTASA del producto (con IVA incluido)
-            ];
         } catch (\Exception $e) {
-            \FacturaScripts\Core\Tools::log()->error("ERROR getProduct({$productId}): " . $e->getMessage());
-            return null;
+            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON falló - {$e->getMessage()}");
         }
+
+        // ESTRATEGIA 2: Si JSON no funcionó o no encontró ecotax, intentar con XML como fallback
+        if (!$foundInJson) {
+            try {
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Intentando XML como fallback...");
+                $xmlString = $this->webService->get("products/{$productId}");
+                $xml = simplexml_load_string($xmlString);
+
+                if ($xml && isset($xml->product->ecotax)) {
+                    $ecotaxValue = (string)$xml->product->ecotax;
+                    $ecotax = is_numeric($ecotaxValue) ? (float)$ecotaxValue : 0.0;
+                    \FacturaScripts\Core\Tools::log()->info("getProduct({$productId}): Leído de XML (fallback) → ecotax = {$ecotax}€");
+                } else {
+                    \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): XML tampoco tiene ecotax");
+                }
+            } catch (\Exception $e) {
+                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): XML también falló - {$e->getMessage()}");
+            }
+        }
+
+        return [
+            'id' => $productId,
+            'ecotax' => $ecotax,  // ECOTASA del producto (con IVA incluido)
+        ];
     }
 
     /**
