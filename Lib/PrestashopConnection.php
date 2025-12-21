@@ -276,17 +276,25 @@ class PrestashopConnection
             $xml = simplexml_load_string($xmlString);
 
             if (!isset($xml->product)) {
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): XML no contiene <product>");
                 return null;
             }
 
             $product = $xml->product;
 
+            // Leer ecotax - puede estar directamente o ser string vacío
+            $ecotax = 0.0;
+            if (isset($product->ecotax)) {
+                $ecotaxValue = (string)$product->ecotax;
+                $ecotax = !empty($ecotaxValue) ? (float)$ecotaxValue : 0.0;
+            }
+
             return [
                 'id' => (int)$product->id,
-                'ecotax' => (float)$product->ecotax,  // ECOTASA del producto (con IVA incluido)
+                'ecotax' => $ecotax,  // ECOTASA del producto (con IVA incluido)
             ];
         } catch (\Exception $e) {
-            error_log("ERROR getProduct({$productId}): " . $e->getMessage());
+            \FacturaScripts\Core\Tools::log()->error("ERROR getProduct({$productId}): " . $e->getMessage());
             return null;
         }
     }

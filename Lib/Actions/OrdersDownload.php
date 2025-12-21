@@ -407,10 +407,23 @@ class OrdersDownload
                 $ecotaxTaxRate = 21.0;
 
                 if ($productId > 0) {
+                    Tools::log()->debug("ECOTAX: Consultando producto ID {$productId}...");
                     $productData = $this->connection->getProduct($productId);
-                    if ($productData && isset($productData['ecotax']) && $productData['ecotax'] > 0) {
-                        $ecotaxTaxIncl = $productData['ecotax'];
-                        Tools::log()->info("ECOTAX desde producto {$productId}: {$ecotaxTaxIncl}€");
+
+                    if ($productData === null) {
+                        Tools::log()->warning("ECOTAX: getProduct({$productId}) retornó NULL");
+                    } elseif (!isset($productData['ecotax'])) {
+                        Tools::log()->warning("ECOTAX: Producto {$productId} no tiene campo 'ecotax' en respuesta");
+                    } else {
+                        $ecotaxValue = $productData['ecotax'];
+                        Tools::log()->debug("ECOTAX: Producto {$productId} tiene ecotax = {$ecotaxValue}€");
+
+                        if ($ecotaxValue > 0) {
+                            $ecotaxTaxIncl = $ecotaxValue;
+                            Tools::log()->info("✓ ECOTAX detectada en producto {$productId}: {$ecotaxTaxIncl}€ (con IVA)");
+                        } else {
+                            Tools::log()->debug("ECOTAX: Producto {$productId} tiene ecotax = 0 (sin ecotasa)");
+                        }
                     }
                 }
 
@@ -481,6 +494,7 @@ class OrdersDownload
 
             // ECOTASA: Si el producto tiene ecotasa, añadir línea de ecotasa inmediatamente después
             if ($product['ecotax_tax_excl'] > 0) {
+                Tools::log()->info("→ Añadiendo línea ECOTAX para producto: {$product['product_name']} (Cant: {$product['product_quantity']}, Ecotax: {$product['ecotax_tax_excl']}€ sin IVA)");
                 $this->addEcotaxLine(
                     $albaran,
                     $product['ecotax_tax_excl'],      // Ecotasa SIN IVA
