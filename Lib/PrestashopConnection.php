@@ -272,25 +272,32 @@ class PrestashopConnection
         }
 
         try {
-            $xmlString = $this->webService->get("products/{$productId}");
-            $xml = simplexml_load_string($xmlString);
+            // Usar JSON en lugar de XML - más rápido y simple
+            $jsonString = $this->webService->get("products/{$productId}?output_format=JSON");
+            $data = json_decode($jsonString, true);
 
-            if (!isset($xml->product)) {
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): XML no contiene <product>");
+            if (!$data || !isset($data['product'])) {
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON no contiene 'product'");
+                \FacturaScripts\Core\Tools::log()->debug("Respuesta JSON: " . substr($jsonString, 0, 500));
                 return null;
             }
 
-            $product = $xml->product;
+            $product = $data['product'];
 
-            // Leer ecotax - puede estar directamente o ser string vacío
+            // Leer ecotax - puede venir como string, float, o vacío
             $ecotax = 0.0;
-            if (isset($product->ecotax)) {
-                $ecotaxValue = (string)$product->ecotax;
-                $ecotax = !empty($ecotaxValue) ? (float)$ecotaxValue : 0.0;
+            if (isset($product['ecotax'])) {
+                $ecotaxValue = $product['ecotax'];
+                // Convertir a float manejando strings vacíos
+                $ecotax = is_numeric($ecotaxValue) ? (float)$ecotaxValue : 0.0;
+
+                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): ecotax raw = '{$ecotaxValue}' → parsed = {$ecotax}");
+            } else {
+                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): campo 'ecotax' no existe en JSON");
             }
 
             return [
-                'id' => (int)$product->id,
+                'id' => (int)$product['id'],
                 'ecotax' => $ecotax,  // ECOTASA del producto (con IVA incluido)
             ];
         } catch (\Exception $e) {
