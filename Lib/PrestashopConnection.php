@@ -289,20 +289,25 @@ class PrestashopConnection
             // COMPATIBILIDAD: Manejar diferentes estructuras de respuesta
             $product = null;
 
-            // Opción 1: {"prestashop": {"product": {...}}}
-            if (isset($data['prestashop']['product'])) {
-                $product = $data['prestashop']['product'];
-                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): JSON con wrapper 'prestashop.product'");
+            // Opción 1: {"products": [{"id": ..., "ecotax": ...}]}  - ARRAY
+            if (isset($data['products'][0])) {
+                $product = $data['products'][0];
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON con array 'products[0]' ✓");
             }
-            // Opción 2: {"product": {...}}
+            // Opción 2: {"prestashop": {"product": {...}}}
+            elseif (isset($data['prestashop']['product'])) {
+                $product = $data['prestashop']['product'];
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON con wrapper 'prestashop.product'");
+            }
+            // Opción 3: {"product": {...}}
             elseif (isset($data['product'])) {
                 $product = $data['product'];
-                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): JSON con wrapper 'product'");
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON con wrapper 'product'");
             }
-            // Opción 3: {"id": ...} directo
+            // Opción 4: {"id": ...} directo
             elseif (isset($data['id'])) {
                 $product = $data;
-                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): JSON directo sin wrapper");
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON directo sin wrapper");
             }
             // No se encontró estructura válida
             else {
