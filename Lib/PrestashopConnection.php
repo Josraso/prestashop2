@@ -279,12 +279,12 @@ class PrestashopConnection
 
             if (!$data) {
                 \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Error al parsear JSON");
-                \FacturaScripts\Core\Tools::log()->debug("Respuesta raw: " . substr($jsonString, 0, 500));
+                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Respuesta raw: " . substr($jsonString, 0, 500));
                 return null;
             }
 
             // DEBUG: Ver estructura del JSON recibido
-            \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): Claves raíz JSON: " . implode(', ', array_keys($data)));
+            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Claves raíz JSON: " . implode(', ', array_keys($data)));
 
             // COMPATIBILIDAD: Manejar diferentes estructuras de respuesta
             $product = null;
@@ -307,7 +307,7 @@ class PrestashopConnection
             // No se encontró estructura válida
             else {
                 \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Estructura JSON no reconocida");
-                \FacturaScripts\Core\Tools::log()->debug("JSON completo (primeros 1000 chars): " . substr($jsonString, 0, 1000));
+                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): JSON completo: " . substr($jsonString, 0, 1000));
                 return null;
             }
 
