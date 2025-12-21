@@ -276,13 +276,27 @@ class PrestashopConnection
             $jsonString = $this->webService->get("products/{$productId}?output_format=JSON");
             $data = json_decode($jsonString, true);
 
-            if (!$data || !isset($data['product'])) {
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON no contiene 'product'");
-                \FacturaScripts\Core\Tools::log()->debug("Respuesta JSON: " . substr($jsonString, 0, 500));
+            if (!$data) {
+                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Error al parsear JSON");
+                \FacturaScripts\Core\Tools::log()->debug("Respuesta raw: " . substr($jsonString, 0, 500));
                 return null;
             }
 
-            $product = $data['product'];
+            // COMPATIBILIDAD: Algunas instalaciones devuelven {"product": {...}}, otras devuelven directamente el objeto
+            $product = null;
+            if (isset($data['product'])) {
+                // Estructura: {"product": {"id": 15, "ecotax": "1.50"}}
+                $product = $data['product'];
+                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): JSON con wrapper 'product'");
+            } elseif (isset($data['id'])) {
+                // Estructura directa: {"id": 15, "ecotax": "1.50"}
+                $product = $data;
+                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): JSON directo sin wrapper");
+            } else {
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON no tiene 'product' ni 'id'");
+                \FacturaScripts\Core\Tools::log()->debug("Claves en JSON: " . implode(', ', array_keys($data)));
+                return null;
+            }
 
             // Leer ecotax - puede venir como string, float, o vacío
             $ecotax = 0.0;
