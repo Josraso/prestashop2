@@ -283,19 +283,31 @@ class PrestashopConnection
                 return null;
             }
 
-            // COMPATIBILIDAD: Algunas instalaciones devuelven {"product": {...}}, otras devuelven directamente el objeto
+            // DEBUG: Ver estructura del JSON recibido
+            \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): Claves raíz JSON: " . implode(', ', array_keys($data)));
+
+            // COMPATIBILIDAD: Manejar diferentes estructuras de respuesta
             $product = null;
-            if (isset($data['product'])) {
-                // Estructura: {"product": {"id": 15, "ecotax": "1.50"}}
+
+            // Opción 1: {"prestashop": {"product": {...}}}
+            if (isset($data['prestashop']['product'])) {
+                $product = $data['prestashop']['product'];
+                \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): JSON con wrapper 'prestashop.product'");
+            }
+            // Opción 2: {"product": {...}}
+            elseif (isset($data['product'])) {
                 $product = $data['product'];
                 \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): JSON con wrapper 'product'");
-            } elseif (isset($data['id'])) {
-                // Estructura directa: {"id": 15, "ecotax": "1.50"}
+            }
+            // Opción 3: {"id": ...} directo
+            elseif (isset($data['id'])) {
                 $product = $data;
                 \FacturaScripts\Core\Tools::log()->debug("getProduct({$productId}): JSON directo sin wrapper");
-            } else {
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON no tiene 'product' ni 'id'");
-                \FacturaScripts\Core\Tools::log()->debug("Claves en JSON: " . implode(', ', array_keys($data)));
+            }
+            // No se encontró estructura válida
+            else {
+                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Estructura JSON no reconocida");
+                \FacturaScripts\Core\Tools::log()->debug("JSON completo (primeros 1000 chars): " . substr($jsonString, 0, 1000));
                 return null;
             }
 
