@@ -317,14 +317,16 @@ class PrestashopConnection
             try {
                 \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Intentando XML como fallback...");
                 $xmlString = $this->webService->get("products/{$productId}");
-                $xml = simplexml_load_string($xmlString);
 
-                if ($xml && isset($xml->product->ecotax)) {
-                    $ecotaxValue = (string)$xml->product->ecotax;
+                // Buscar ecotax directamente en el string XML (método infalible)
+                if (preg_match('/<ecotax[^>]*>(.*?)<\/ecotax>/i', $xmlString, $matches)) {
+                    $ecotaxValue = $matches[1];
                     $ecotax = is_numeric($ecotaxValue) ? (float)$ecotaxValue : 0.0;
-                    \FacturaScripts\Core\Tools::log()->info("getProduct({$productId}): Leído de XML (fallback) → ecotax = {$ecotax}€");
+                    \FacturaScripts\Core\Tools::log()->info("getProduct({$productId}): ✓ Encontrado en XML con regex → ecotax = {$ecotax}€");
                 } else {
-                    \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): XML tampoco tiene ecotax");
+                    // Si no encuentra con regex, mostrar fragmento del XML para debugging
+                    \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): No se encuentra <ecotax> en XML");
+                    \FacturaScripts\Core\Tools::log()->error("XML (primeros 800 chars): " . substr($xmlString, 0, 800));
                 }
             } catch (\Exception $e) {
                 \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): XML también falló - {$e->getMessage()}");
