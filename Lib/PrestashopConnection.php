@@ -276,8 +276,9 @@ class PrestashopConnection
 
         // ESTRATEGIA 1: Intentar primero con JSON (más rápido)
         try {
-            // Usar segundo parámetro para ID, como en getOrders (línea 155)
-            $jsonString = $this->webService->get('products', $productId, null, ['output_format' => 'JSON']);
+            // IMPORTANTE: Para obtener un recurso específico por ID, usar 'resource/id' en 1er parámetro
+            // Ejemplo línea 228: get('orders/' . $orderId)
+            $jsonString = $this->webService->get('products/' . $productId . '?output_format=JSON');
             $data = json_decode($jsonString, true);
 
             if ($data) {
@@ -317,8 +318,8 @@ class PrestashopConnection
         if (!$foundInJson) {
             try {
                 \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Intentando XML como fallback...");
-                // Usar segundo parámetro para ID
-                $xmlString = $this->webService->get('products', $productId);
+                // Igual que línea 228: get('orders/' . $orderId)
+                $xmlString = $this->webService->get('products/' . $productId);
 
                 // Buscar ecotax directamente en el string XML (método infalible)
                 if (preg_match('/<ecotax[^>]*>(.*?)<\/ecotax>/is', $xmlString, $matches)) {
