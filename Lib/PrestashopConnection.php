@@ -281,8 +281,8 @@ class PrestashopConnection
             $jsonString = $this->webService->get('products/' . $productId . '?output_format=JSON');
 
             // DEBUG: Ver qué está recibiendo realmente
-            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON recibido - longitud: " . strlen($jsonString) . " bytes");
-            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Primeros 300 chars: " . substr($jsonString, 0, 300));
+            \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): JSON recibido - longitud: " . strlen($jsonString) . " bytes");
+            \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Contenido JSON completo: " . var_export($jsonString, true));
 
             $data = json_decode($jsonString, true);
 
@@ -327,8 +327,8 @@ class PrestashopConnection
                 $xmlString = $this->webService->get('products/' . $productId);
 
                 // DEBUG: Ver qué está recibiendo realmente
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): XML recibido - longitud: " . strlen($xmlString) . " bytes");
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Primeros 500 chars XML: " . substr($xmlString, 0, 500));
+                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): XML recibido - longitud: " . strlen($xmlString) . " bytes");
+                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Contenido XML completo: " . var_export($xmlString, true));
 
                 // Buscar ecotax directamente en el string XML (método infalible)
                 if (preg_match('/<ecotax[^>]*>(.*?)<\/ecotax>/is', $xmlString, $matches)) {
