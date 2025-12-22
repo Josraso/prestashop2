@@ -76,6 +76,19 @@ class PrestashopImportLog extends ModelClass
      */
     public static function logSuccess(int $orderId, string $orderRef, int $idalbaran, string $codcliente, string $nombrecliente, float $total, string $origen = 'cron'): bool
     {
+        // IMPORTANTE: Verificar si ya existe un registro de éxito para este pedido
+        // Esto previene registros duplicados en el log
+        $existing = new self();
+        $where = [
+            new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('order_id', $orderId),
+            new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('resultado', 'success')
+        ];
+
+        if ($existing->loadFromCode('', $where)) {
+            \FacturaScripts\Core\Tools::log()->warning("⚠ Log de importación ya existe para pedido {$orderRef} (ID: {$orderId}). No se creará duplicado.");
+            return true; // No es un error, simplemente ya existe
+        }
+
         $log = new self();
         $log->order_id = $orderId;
         $log->order_reference = $orderRef;

@@ -149,7 +149,8 @@ class OrdersDownload
 
                     // Verificar si el pedido ya fue importado
                     if ($this->isOrderImported($orderRef)) {
-                        Tools::log()->info("[OrdersDownload::batch] ⊘ YA IMPORTADO: {$orderRef}");
+                        Tools::log()->info("[OrdersDownload::batch] ⊘ YA IMPORTADO: {$orderRef} (ID: {$orderId})");
+                        Tools::log()->debug("[OrdersDownload::batch] Este pedido ya fue importado anteriormente. Estado actual en PrestaShop: " . (string)$orderXml->current_state);
                         PrestashopImportLog::logSkipped($orderId, $orderRef, "Pedido ya importado anteriormente", $origen);
                         $skipped++;
                         continue;
@@ -603,7 +604,15 @@ class OrdersDownload
     {
         $albaran = new AlbaranCliente();
         $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('numero2', $orderReference)];
-        return $albaran->loadFromCode('', $where);
+        $exists = $albaran->loadFromCode('', $where);
+
+        if ($exists) {
+            Tools::log()->debug("✓ Albarán encontrado: {$orderReference} (ID: {$albaran->idalbaran}, Cliente: {$albaran->codcliente})");
+        } else {
+            Tools::log()->debug("○ Albarán NO encontrado para referencia: {$orderReference}");
+        }
+
+        return $exists;
     }
 
     /**
@@ -971,24 +980,29 @@ class OrdersDownload
         // No existe, crear nuevo grupo
         $grupoClientes->nombre = $groupName;
 
-        // Generar código único para el grupo (limitar a 25 caracteres)
+        // Generar código único para el grupo (MÁXIMO 6 caracteres - requisito FacturaScripts)
         $baseCode = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $groupName));
-        $baseCode = substr($baseCode, 0, 20);
+        $baseCode = substr($baseCode, 0, 4); // Dejar espacio para números si hay colisión
 
         if (empty($baseCode)) {
-            $baseCode = 'GRUPO';
+            $baseCode = 'GRP';
         }
 
-        $codgrupo = $baseCode;
+        $codgrupo = substr($baseCode, 0, 6); // Máximo 6 caracteres
         $counter = 1;
 
         // Asegurar que el código sea único
         $tempGrupo = new \FacturaScripts\Dinamic\Model\GrupoClientes();
         while ($tempGrupo->loadFromCode($codgrupo)) {
-            $codgrupo = $baseCode . $counter;
+            // Si hay colisión, añadir número (ej: DESC1, DESC2...)
+            $suffix = (string)$counter;
+            $maxBase = 6 - strlen($suffix);
+            $codgrupo = substr($baseCode, 0, $maxBase) . $suffix;
             $counter++;
-            if ($counter > 100) {
-                $codgrupo = 'GRP' . rand(1000, 9999);
+            if ($counter > 99) {
+                // Fallback: usar número aleatorio
+                $codgrupo = 'G' . rand(10000, 99999);
+                $codgrupo = substr($codgrupo, 0, 6);
                 break;
             }
         }
