@@ -161,6 +161,14 @@ class ConfigPrestashop extends Controller
         $this->config->import_since_date = $this->request->request->get('import_since_date', '');
         $this->config->idioma_productos = (int)$this->request->request->get('idioma_productos', 1);
 
+        // Configuración de base de datos para ecotax
+        $this->config->use_db_for_ecotax = (bool)$this->request->request->get('use_db_for_ecotax', false);
+        $this->config->db_host = $this->request->request->get('db_host', 'localhost');
+        $this->config->db_name = $this->request->request->get('db_name', '');
+        $this->config->db_user = $this->request->request->get('db_user', '');
+        $this->config->db_password = $this->request->request->get('db_password', '');
+        $this->config->db_prefix = $this->request->request->get('db_prefix', 'ps_');
+
         // Guardar estados seleccionados
         $estadosSeleccionados = $this->request->request->all()['estados'] ?? [];
         $this->config->setEstadosArray($estadosSeleccionados);
