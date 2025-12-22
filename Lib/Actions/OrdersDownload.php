@@ -396,34 +396,60 @@ class OrdersDownload
         // Importar líneas de pedido
         // ECOTASA: Obtener desde el PRODUCTO directamente (ps_product.ecotax)
         $products = [];
+
+        // OPTIMIZACIÓN: Recopilar todos los product_id primero para leer ecotax en UNA sola consulta
+        $productIds = [];
+        if (isset($orderXml->associations->order_rows->order_row)) {
+            foreach ($orderXml->associations->order_rows->order_row as $row) {
+                $productId = (int)$row->product_id;
+                if ($productId > 0) {
+                    $productIds[] = $productId;
+                }
+            }
+        }
+
+        // Leer ecotax: PRIMERO intentar BD (1 query), luego webservice como fallback
+        $ecotaxData = [];
+        if (!empty($productIds)) {
+            // Estrategia 1: Lectura desde BD (mucho más rápida y fiable)
+            if ($this->config->use_db_for_ecotax) {
+                Tools::log()->info("ECOTAX: Leyendo desde base de datos de PrestaShop...");
+                $ecotaxData = $this->connection->getEcotaxFromDatabase($productIds);
+
+                if (!empty($ecotaxData)) {
+                    Tools::log()->info("✓ ECOTAX: Leídos " . count($ecotaxData) . " productos desde BD");
+                }
+            }
+
+            // Estrategia 2: Fallback a webservice si BD no está configurada o falló
+            if (empty($ecotaxData)) {
+                Tools::log()->warning("ECOTAX: Usando webservice como fallback (puede ser lento)...");
+                foreach ($productIds as $productId) {
+                    $productData = $this->connection->getProduct($productId);
+                    if ($productData && isset($productData['ecotax'])) {
+                        $ecotaxData[$productId] = (float)$productData['ecotax'];
+                    }
+                }
+            }
+        }
+
+        // Procesar líneas de pedido
         if (isset($orderXml->associations->order_rows->order_row)) {
             foreach ($orderXml->associations->order_rows->order_row as $row) {
                 $unitPriceTaxIncl = (float)$row->unit_price_tax_incl;
                 $unitPriceTaxExcl = (float)$row->unit_price_tax_excl;
                 $productId = (int)$row->product_id;
 
-                // ECOTASA: Obtener desde el producto directamente
+                // ECOTASA: Leer desde el array precargado
                 $ecotaxTaxIncl = 0.0;
                 $ecotaxTaxRate = 21.0;
 
-                if ($productId > 0) {
-                    Tools::log()->debug("ECOTAX: Consultando producto ID {$productId}...");
-                    $productData = $this->connection->getProduct($productId);
+                if ($productId > 0 && isset($ecotaxData[$productId])) {
+                    $ecotaxValue = $ecotaxData[$productId];
 
-                    if ($productData === null) {
-                        Tools::log()->warning("ECOTAX: getProduct({$productId}) retornó NULL");
-                    } elseif (!isset($productData['ecotax'])) {
-                        Tools::log()->warning("ECOTAX: Producto {$productId} no tiene campo 'ecotax' en respuesta");
-                    } else {
-                        $ecotaxValue = $productData['ecotax'];
-                        Tools::log()->debug("ECOTAX: Producto {$productId} tiene ecotax = {$ecotaxValue}€");
-
-                        if ($ecotaxValue > 0) {
-                            $ecotaxTaxIncl = $ecotaxValue;
-                            Tools::log()->info("✓ ECOTAX detectada en producto {$productId}: {$ecotaxTaxIncl}€ (con IVA)");
-                        } else {
-                            Tools::log()->debug("ECOTAX: Producto {$productId} tiene ecotax = 0 (sin ecotasa)");
-                        }
+                    if ($ecotaxValue > 0) {
+                        $ecotaxTaxIncl = $ecotaxValue;
+                        Tools::log()->info("✓ ECOTAX detectada en producto {$productId}: {$ecotaxTaxIncl}€ (con IVA)");
                     }
                 }
 
