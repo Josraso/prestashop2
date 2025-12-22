@@ -282,8 +282,14 @@ class PrestashopConnection
 
         // ESTRATEGIA 1: Intentar primero con JSON (más rápido)
         try {
-            // IMPORTANTE: Añadir display=full para obtener TODOS los datos, no solo el link
-            $jsonString = $this->webService->get('products/' . $productId . '?output_format=JSON&display=full');
+            // IMPORTANTE: Pasar parámetros como ARRAY en 4º argumento, NO en la URL
+            // Si se pasan en la URL no llegan correctamente al servidor
+            $params = [
+                'output_format' => 'JSON',
+                'display' => 'full'  // Sin esto solo devuelve {"products":[{"id":X}]}
+            ];
+
+            $jsonString = $this->webService->get('products/' . $productId, null, null, $params);
 
             \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Respuesta recibida - " . strlen($jsonString) . " bytes");
             if (strlen($jsonString) < 500) {
@@ -329,8 +335,9 @@ class PrestashopConnection
         if (!$foundInJson) {
             try {
                 \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Intentando XML como fallback...");
-                // IMPORTANTE: Añadir display=full para obtener TODOS los datos, no solo el link
-                $xmlString = $this->webService->get('products/' . $productId . '?display=full');
+                // IMPORTANTE: Pasar display=full como ARRAY, NO en la URL
+                $xmlParams = ['display' => 'full'];
+                $xmlString = $this->webService->get('products/' . $productId, null, null, $xmlParams);
 
                 // Buscar ecotax directamente en el string XML (método infalible)
                 if (preg_match('/<ecotax[^>]*>(.*?)<\/ecotax>/is', $xmlString, $matches)) {
