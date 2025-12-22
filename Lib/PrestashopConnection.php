@@ -263,113 +263,22 @@ class PrestashopConnection
     }
 
     /**
-     * Obtiene un producto específico con ecotax desde ps_product.ecotax
-     *
-     * @param int $productId ID del producto
-     * @return array|null Datos del producto con ecotax o null si falla
+     * MÉTODO ELIMINADO: getProduct()
+     * Ahora se lee ecotax directamente desde la BD de PrestaShop
+     * Ver: getEcotaxFromDatabase()
      */
-    public function getProduct(int $productId): ?array
-    {
-        if (!$this->isConnected()) {
-            return null;
-        }
-
-        $ecotax = 0.0;
-        $foundInJson = false;
-
-        // Construir URL para debugging
-        $urlPath = 'products/' . $productId . '?output_format=JSON&display=full';
-        $fullUrl = rtrim($this->config->shop_url, '/') . '/api/' . $urlPath . '&ws_key=' . $this->config->api_key;
-        \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): URL que intento usar:");
-        \FacturaScripts\Core\Tools::log()->warning("  → {$fullUrl}");
-
-        // ESTRATEGIA 1: Intentar primero con JSON (más rápido)
-        try {
-            // IMPORTANTE: Pasar parámetros como ARRAY en 4º argumento, NO en la URL
-            // Si se pasan en la URL no llegan correctamente al servidor
-            $params = [
-                'output_format' => 'JSON',
-                'display' => 'full'  // Sin esto solo devuelve {"products":[{"id":X}]}
-            ];
-
-            $jsonString = $this->webService->get('products/' . $productId, null, null, $params);
-
-            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Respuesta recibida - " . strlen($jsonString) . " bytes");
-            if (strlen($jsonString) < 500) {
-                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Respuesta corta/sospechosa: " . $jsonString);
-            }
-
-            $data = json_decode($jsonString, true);
-
-            if ($data) {
-                // COMPATIBILIDAD: Manejar diferentes estructuras de respuesta
-                $product = null;
-
-                // Opción 1: {"products": [{"id": ..., "ecotax": ...}]}  - ARRAY
-                if (isset($data['products'][0])) {
-                    $product = $data['products'][0];
-                }
-                // Opción 2: {"prestashop": {"product": {...}}}
-                elseif (isset($data['prestashop']['product'])) {
-                    $product = $data['prestashop']['product'];
-                }
-                // Opción 3: {"product": {...}}
-                elseif (isset($data['product'])) {
-                    $product = $data['product'];
-                }
-                // Opción 4: {"id": ...} directo
-                elseif (isset($data['id'])) {
-                    $product = $data;
-                }
-
-                // Si encontramos el producto en JSON, intentar leer ecotax
-                if ($product && isset($product['ecotax'])) {
-                    $ecotaxValue = $product['ecotax'];
-                    $ecotax = is_numeric($ecotaxValue) ? (float)$ecotaxValue : 0.0;
-                    $foundInJson = true;
-                    \FacturaScripts\Core\Tools::log()->info("getProduct({$productId}): Leído de JSON → ecotax = {$ecotax}€");
-                }
-            }
-        } catch (\Exception $e) {
-            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON falló - {$e->getMessage()}");
-        }
-
-        // ESTRATEGIA 2: Si JSON no funcionó o no encontró ecotax, intentar con XML como fallback
-        if (!$foundInJson) {
-            try {
-                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Intentando XML como fallback...");
-                // IMPORTANTE: Pasar display=full como ARRAY, NO en la URL
-                $xmlParams = ['display' => 'full'];
-                $xmlString = $this->webService->get('products/' . $productId, null, null, $xmlParams);
-
-                // Buscar ecotax directamente en el string XML (método infalible)
-                if (preg_match('/<ecotax[^>]*>(.*?)<\/ecotax>/is', $xmlString, $matches)) {
-                    // Limpiar CDATA si existe: <![CDATA[ 0.702479 ]]> → 0.702479
-                    $ecotaxValue = trim(str_replace(['<![CDATA[', ']]>'], '', $matches[1]));
-                    $ecotax = is_numeric($ecotaxValue) ? (float)$ecotaxValue : 0.0;
-                    \FacturaScripts\Core\Tools::log()->info("getProduct({$productId}): ✓ Encontrado en XML con regex → ecotax = {$ecotax}€");
-                } else {
-                    // Si no encuentra con regex, mostrar fragmento del XML para debugging
-                    \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): No se encuentra <ecotax> en XML");
-                    \FacturaScripts\Core\Tools::log()->error("XML (primeros 800 chars): " . substr($xmlString, 0, 800));
-                }
-            } catch (\Exception $e) {
-                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): XML también falló - {$e->getMessage()}");
-            }
-        }
-
-        return [
-            'id' => $productId,
-            'ecotax' => $ecotax,  // ECOTASA del producto (con IVA incluido)
-        ];
-    }
 
     /**
-     * Obtiene los detalles de un pedido (order_details) con campos ecotax
-     * Este endpoint incluye campos que NO están en order_rows como ecotax
+     * MÉTODO ELIMINADO: getOrderDetails()
+     * Ya no se usa, la ecotax se lee desde BD
+     */
+
+    /**
+     * Obtiene los detalles de un pedido (SOLO si necesitas otros datos, NO para ecotax)
+     * La ecotax se lee desde BD con getEcotaxFromDatabase()
      *
      * @param int $orderId ID del pedido
-     * @return array Array de order_details con campos ecotax
+     * @return array Array de order_details
      */
     public function getOrderDetails(int $orderId): array
     {
