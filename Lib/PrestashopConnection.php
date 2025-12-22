@@ -15,6 +15,9 @@ class PrestashopConnection
     /** @var PrestashopConfig */
     private $config;
 
+    /** @var \mysqli|null */
+    private $dbConnection;
+
     public function __construct(?PrestashopConfig $config = null)
     {
         $this->config = $config ?? PrestashopConfig::getActive();
@@ -608,5 +611,120 @@ class PrestashopConnection
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    /**
+     * Conecta a la base de datos de PrestaShop
+     * Solo se ejecuta si use_db_for_ecotax está activado
+     *
+     * @return bool True si la conexión es exitosa
+     */
+    private function connectToDatabase(): bool
+    {
+        if ($this->dbConnection) {
+            return true; // Ya está conectado
+        }
+
+        if (!$this->config->use_db_for_ecotax) {
+            return false; // No está habilitado
+        }
+
+        if (empty($this->config->db_host) || empty($this->config->db_name) || empty($this->config->db_user)) {
+            \FacturaScripts\Core\Tools::log()->warning("Configuración de BD incompleta para leer ecotax");
+            return false;
+        }
+
+        try {
+            $this->dbConnection = new \mysqli(
+                $this->config->db_host,
+                $this->config->db_user,
+                $this->config->db_password,
+                $this->config->db_name
+            );
+
+            if ($this->dbConnection->connect_error) {
+                \FacturaScripts\Core\Tools::log()->error("Error conectando a BD PrestaShop: " . $this->dbConnection->connect_error);
+                $this->dbConnection = null;
+                return false;
+            }
+
+            $this->dbConnection->set_charset('utf8');
+            \FacturaScripts\Core\Tools::log()->info("✓ Conectado a BD de PrestaShop para leer ecotax");
+            return true;
+        } catch (\Exception $e) {
+            \FacturaScripts\Core\Tools::log()->error("Excepción al conectar a BD PrestaShop: " . $e->getMessage());
+            $this->dbConnection = null;
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene ecotax de múltiples productos desde la base de datos
+     * Mucho más eficiente que llamar al webservice N veces
+     *
+     * @param array $productIds Array de IDs de productos
+     * @return array Array asociativo [productId => ecotax]
+     */
+    public function getEcotaxFromDatabase(array $productIds): array
+    {
+        if (empty($productIds)) {
+            return [];
+        }
+
+        if (!$this->connectToDatabase()) {
+            \FacturaScripts\Core\Tools::log()->warning("No se pudo conectar a BD para leer ecotax, usando webservice como fallback");
+            return [];
+        }
+
+        $result = [];
+        $prefix = $this->config->db_prefix ?? 'ps_';
+
+        // Construir lista de IDs para la query
+        $ids = implode(',', array_map('intval', $productIds));
+
+        $query = "SELECT id_product, ecotax FROM {$prefix}product WHERE id_product IN ({$ids})";
+
+        try {
+            $queryResult = $this->dbConnection->query($query);
+
+            if ($queryResult) {
+                while ($row = $queryResult->fetch_assoc()) {
+                    $productId = (int)$row['id_product'];
+                    $ecotax = (float)$row['ecotax'];
+                    $result[$productId] = $ecotax;
+
+                    if ($ecotax > 0) {
+                        \FacturaScripts\Core\Tools::log()->debug("BD: Producto {$productId} tiene ecotax = {$ecotax}€");
+                    }
+                }
+                $queryResult->free();
+                \FacturaScripts\Core\Tools::log()->info("✓ Leídos " . count($result) . " productos desde BD de PrestaShop");
+            } else {
+                \FacturaScripts\Core\Tools::log()->error("Error en query BD: " . $this->dbConnection->error);
+            }
+        } catch (\Exception $e) {
+            \FacturaScripts\Core\Tools::log()->error("Excepción al leer ecotax desde BD: " . $e->getMessage());
+        }
+
+        return $result;
+    }
+
+    /**
+     * Cierra la conexión a la base de datos
+     */
+    public function closeDatabase(): void
+    {
+        if ($this->dbConnection) {
+            $this->dbConnection->close();
+            $this->dbConnection = null;
+        }
+    }
+
+    /**
+     * Destructor - cierra la conexión a BD si existe
+     */
+    public function __destruct()
+    {
+        $this->closeDatabase();
     }
 }
