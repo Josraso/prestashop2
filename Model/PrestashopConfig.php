@@ -51,6 +51,25 @@ class PrestashopConfig extends ModelClass
     /** @var int */
     public $idioma_productos;
 
+    // Configuración de base de datos para leer ecotax directamente
+    /** @var string */
+    public $db_host;
+
+    /** @var string */
+    public $db_name;
+
+    /** @var string */
+    public $db_user;
+
+    /** @var string */
+    public $db_password;
+
+    /** @var string */
+    public $db_prefix;
+
+    /** @var bool */
+    public $use_db_for_ecotax;
+
     public static function primaryColumn(): string
     {
         return 'id';
@@ -72,6 +91,14 @@ class PrestashopConfig extends ModelClass
         $this->webhook_enabled = false;
         $this->idioma_productos = 1; // ID 1 = idioma por defecto (normalmente español)
         $this->generateWebhookToken(); // Genera y asigna el token automáticamente
+
+        // Configuración de base de datos para ecotax
+        $this->db_host = 'localhost';
+        $this->db_name = '';
+        $this->db_user = '';
+        $this->db_password = '';
+        $this->db_prefix = 'ps_';
+        $this->use_db_for_ecotax = false; // Por defecto desactivado
     }
 
     /**

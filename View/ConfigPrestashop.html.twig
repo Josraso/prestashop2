@@ -330,6 +330,124 @@
                                         </small>
                                     </div>
                                 </div>
+
+                                {# Sección de Base de Datos para Ecotax #}
+                                <hr class="my-4">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-database"></i> Configuración de Base de Datos (Ecotax)
+                                </h5>
+                                <p class="text-muted small mb-3">
+                                    <i class="fas fa-info-circle"></i>
+                                    Configura el acceso directo a la base de datos de PrestaShop para leer ecotax.
+                                    Solo se usa si está activado y solo cuando hay productos con ecotax.
+                                </p>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">
+                                        Usar BD para Ecotax
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox"
+                                                   class="custom-control-input"
+                                                   id="use_db_for_ecotax"
+                                                   name="use_db_for_ecotax"
+                                                   value="1"
+                                                   {% if fsc.config.use_db_for_ecotax %}checked{% endif %}>
+                                            <label class="custom-control-label" for="use_db_for_ecotax">
+                                                Leer ecotax desde base de datos (recomendado si el webservice falla)
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Lectura directa desde la BD - más rápida y fiable que el webservice
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="db_host">
+                                        Host BD
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <input type="text"
+                                               name="db_host"
+                                               id="db_host"
+                                               value="{{ fsc.config.db_host|default('localhost') }}"
+                                               class="form-control"
+                                               placeholder="localhost"/>
+                                        <small class="form-text text-muted">
+                                            Servidor de la base de datos de PrestaShop (normalmente localhost)
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="db_name">
+                                        Nombre BD
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <input type="text"
+                                               name="db_name"
+                                               id="db_name"
+                                               value="{{ fsc.config.db_name|default('') }}"
+                                               class="form-control"
+                                               placeholder="prestashop_db"/>
+                                        <small class="form-text text-muted">
+                                            Nombre de la base de datos de PrestaShop
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="db_user">
+                                        Usuario BD
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <input type="text"
+                                               name="db_user"
+                                               id="db_user"
+                                               value="{{ fsc.config.db_user|default('') }}"
+                                               class="form-control"
+                                               placeholder="usuario"/>
+                                        <small class="form-text text-muted">
+                                            Usuario con permisos de lectura en la BD de PrestaShop
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="db_password">
+                                        Contraseña BD
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <input type="password"
+                                               name="db_password"
+                                               id="db_password"
+                                               value="{{ fsc.config.db_password|default('') }}"
+                                               class="form-control"
+                                               placeholder="••••••••"/>
+                                        <small class="form-text text-muted">
+                                            Contraseña del usuario de la base de datos
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label" for="db_prefix">
+                                        Prefijo Tablas
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <input type="text"
+                                               name="db_prefix"
+                                               id="db_prefix"
+                                               value="{{ fsc.config.db_prefix|default('ps_') }}"
+                                               class="form-control"
+                                               placeholder="ps_"/>
+                                        <small class="form-text text-muted">
+                                            Prefijo de las tablas de PrestaShop (normalmente ps_)
+                                        </small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
