@@ -13,6 +13,9 @@ class Installer
 {
     public function install()
     {
+        // IMPORTANTE: Crear columnas de BD para ecotax si no existen
+        $this->createDatabaseColumns();
+
         // Crear producto "Gastos de envío" si no existe
         $this->createShippingProduct();
 
@@ -26,6 +29,42 @@ class Installer
     public function uninstall()
     {
         // No eliminar el producto al desinstalar por si hay albaranes que lo usan
+    }
+
+    /**
+     * Crea las columnas de configuración de BD para ecotax si no existen
+     */
+    private function createDatabaseColumns(): void
+    {
+        $db = new \FacturaScripts\Core\Base\DataBase();
+
+        // Verificar si las columnas ya existen
+        $sql = "SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'prestashop_config' AND column_name = 'db_host'";
+        $result = $db->select($sql);
+
+        if (!empty($result)) {
+            // Las columnas ya existen
+            return;
+        }
+
+        // Crear las columnas
+        $alterQueries = [
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_host VARCHAR(255) DEFAULT 'localhost'",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_name VARCHAR(100)",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_user VARCHAR(100)",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_password VARCHAR(255)",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_prefix VARCHAR(20) DEFAULT 'ps_'",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS use_db_for_ecotax BOOLEAN DEFAULT false"
+        ];
+
+        foreach ($alterQueries as $query) {
+            if (!$db->exec($query)) {
+                \FacturaScripts\Core\Tools::log()->error("Error creando columna: " . $query);
+            }
+        }
+
+        \FacturaScripts\Core\Tools::log()->info("✓ Columnas de BD para ecotax creadas correctamente");
     }
 
     private function createShippingProduct(): void
