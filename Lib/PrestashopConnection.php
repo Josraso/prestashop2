@@ -279,6 +279,11 @@ class PrestashopConnection
             // IMPORTANTE: Para obtener un recurso específico por ID, usar 'resource/id' en 1er parámetro
             // Ejemplo línea 228: get('orders/' . $orderId)
             $jsonString = $this->webService->get('products/' . $productId . '?output_format=JSON');
+
+            // DEBUG: Ver qué está recibiendo realmente
+            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): JSON recibido - longitud: " . strlen($jsonString) . " bytes");
+            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Primeros 300 chars: " . substr($jsonString, 0, 300));
+
             $data = json_decode($jsonString, true);
 
             if ($data) {
@@ -320,6 +325,10 @@ class PrestashopConnection
                 \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Intentando XML como fallback...");
                 // Igual que línea 228: get('orders/' . $orderId)
                 $xmlString = $this->webService->get('products/' . $productId);
+
+                // DEBUG: Ver qué está recibiendo realmente
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): XML recibido - longitud: " . strlen($xmlString) . " bytes");
+                \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Primeros 500 chars XML: " . substr($xmlString, 0, 500));
 
                 // Buscar ecotax directamente en el string XML (método infalible)
                 if (preg_match('/<ecotax[^>]*>(.*?)<\/ecotax>/is', $xmlString, $matches)) {
