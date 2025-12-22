@@ -274,10 +274,22 @@ class PrestashopConnection
         $ecotax = 0.0;
         $foundInJson = false;
 
+        // Construir URL para debugging
+        $urlPath = 'products/' . $productId . '?output_format=JSON&display=full';
+        $fullUrl = rtrim($this->config->shop_url, '/') . '/api/' . $urlPath . '&ws_key=' . $this->config->api_key;
+        \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): URL que intento usar:");
+        \FacturaScripts\Core\Tools::log()->warning("  → {$fullUrl}");
+
         // ESTRATEGIA 1: Intentar primero con JSON (más rápido)
         try {
             // IMPORTANTE: Añadir display=full para obtener TODOS los datos, no solo el link
             $jsonString = $this->webService->get('products/' . $productId . '?output_format=JSON&display=full');
+
+            \FacturaScripts\Core\Tools::log()->warning("getProduct({$productId}): Respuesta recibida - " . strlen($jsonString) . " bytes");
+            if (strlen($jsonString) < 500) {
+                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Respuesta corta/sospechosa: " . $jsonString);
+            }
+
             $data = json_decode($jsonString, true);
 
             if ($data) {
