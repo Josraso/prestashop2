@@ -741,6 +741,20 @@ class OrdersDownload
                     }
                 }
 
+                // Grupo de cliente - leer desde PrestaShop y asignar
+                $groupId = (int)$customerXml->id_default_group;
+                if ($groupId > 0) {
+                    $groupName = $this->connection->getCustomerGroup($groupId);
+                    if (!empty($groupName)) {
+                        $codgrupo = $this->getOrCreateGrupoClientes($groupName);
+                        if (!empty($codgrupo) && $clienteExistente->codgrupo !== $codgrupo) {
+                            $clienteExistente->codgrupo = $codgrupo;
+                            $actualizado = true;
+                            Tools::log()->info("Actualizando grupo de cliente: {$groupName} ({$codgrupo})");
+                        }
+                    }
+                }
+
                 // Guardar si se actualizó algo
                 if ($actualizado) {
                     $clienteExistente->save();
@@ -854,6 +868,19 @@ class OrdersDownload
 
         $cliente->observaciones = "Importado de PrestaShop. ID: {$customerId}";
 
+        // Asignar grupo de cliente desde PrestaShop
+        $groupId = (int)$customerXml->id_default_group;
+        if ($groupId > 0) {
+            $groupName = $this->connection->getCustomerGroup($groupId);
+            if (!empty($groupName)) {
+                $codgrupo = $this->getOrCreateGrupoClientes($groupName);
+                if (!empty($codgrupo)) {
+                    $cliente->codgrupo = $codgrupo;
+                    Tools::log()->info("Asignando grupo de cliente: {$groupName} ({$codgrupo})");
+                }
+            }
+        }
+
         if ($cliente->save()) {
             Tools::log()->info("Cliente creado: {$cliente->codcliente} - {$cliente->nombre}");
             return $cliente;
@@ -916,6 +943,65 @@ class OrdersDownload
 
         // Formato normalizado: números + letras (todo en mayúsculas)
         return implode('', $numeros) . implode('', $letras);
+    }
+
+    /**
+     * Crea o obtiene un grupo de clientes en FacturaScripts
+     *
+     * @param string $groupName Nombre del grupo desde PrestaShop
+     * @return string|null Código del grupo creado o existente
+     */
+    private function getOrCreateGrupoClientes(string $groupName): ?string
+    {
+        if (empty($groupName)) {
+            return null;
+        }
+
+        // Intentar cargar el modelo GrupoClientes
+        $grupoClientes = new \FacturaScripts\Dinamic\Model\GrupoClientes();
+
+        // Buscar si ya existe un grupo con este nombre
+        $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('nombre', $groupName)];
+        if ($grupoClientes->loadFromCode('', $where)) {
+            // Ya existe, devolver su código
+            Tools::log()->debug("Grupo '{$groupName}' ya existe con código: {$grupoClientes->codgrupo}");
+            return $grupoClientes->codgrupo;
+        }
+
+        // No existe, crear nuevo grupo
+        $grupoClientes->nombre = $groupName;
+
+        // Generar código único para el grupo (limitar a 25 caracteres)
+        $baseCode = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $groupName));
+        $baseCode = substr($baseCode, 0, 20);
+
+        if (empty($baseCode)) {
+            $baseCode = 'GRUPO';
+        }
+
+        $codgrupo = $baseCode;
+        $counter = 1;
+
+        // Asegurar que el código sea único
+        $tempGrupo = new \FacturaScripts\Dinamic\Model\GrupoClientes();
+        while ($tempGrupo->loadFromCode($codgrupo)) {
+            $codgrupo = $baseCode . $counter;
+            $counter++;
+            if ($counter > 100) {
+                $codgrupo = 'GRP' . rand(1000, 9999);
+                break;
+            }
+        }
+
+        $grupoClientes->codgrupo = $codgrupo;
+
+        if ($grupoClientes->save()) {
+            Tools::log()->info("✓ Grupo de clientes creado: '{$groupName}' con código '{$codgrupo}'");
+            return $codgrupo;
+        } else {
+            Tools::log()->error("Error al crear grupo de clientes: '{$groupName}'");
+            return null;
+        }
     }
 
     /**

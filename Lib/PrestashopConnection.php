@@ -408,6 +408,64 @@ class PrestashopConnection
     }
 
     /**
+     * Obtiene información de un grupo de clientes desde PrestaShop
+     */
+    public function getCustomerGroup(int $groupId): ?string
+    {
+        if (!$this->isConnected() || $groupId <= 0) {
+            return null;
+        }
+
+        try {
+            $params = [
+                'filter[id]' => '[' . $groupId . ']',
+                'display' => 'full',
+                'limit' => 1
+            ];
+
+            $xmlString = $this->webService->get('groups', null, null, $params);
+            $xml = simplexml_load_string($xmlString);
+
+            // La respuesta viene como <groups><group>...</group></groups>
+            if (isset($xml->groups->group)) {
+                $group = $xml->groups->group;
+
+                // Si es un array, tomar el primero
+                if (is_array($group) || $group instanceof \Traversable) {
+                    foreach ($group as $g) {
+                        // PrestaShop devuelve el nombre en diferentes idiomas
+                        // Usar el primer nombre disponible
+                        if (isset($g->name->language)) {
+                            foreach ($g->name->language as $lang) {
+                                $groupName = trim((string)$lang);
+                                if (!empty($groupName)) {
+                                    return $groupName;
+                                }
+                            }
+                        }
+                        return null;
+                    }
+                } else {
+                    // Es un solo grupo
+                    if (isset($group->name->language)) {
+                        foreach ($group->name->language as $lang) {
+                            $groupName = trim((string)$lang);
+                            if (!empty($groupName)) {
+                                return $groupName;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            \FacturaScripts\Core\Tools::log()->error("Error al obtener grupo {$groupId}: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Obtiene el historial de estados de un pedido
      */
     public function getOrderHistory(int $orderId): array
