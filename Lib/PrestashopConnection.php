@@ -280,9 +280,10 @@ class PrestashopConnection
             // Ejemplo línea 228: get('orders/' . $orderId)
             $jsonString = $this->webService->get('products/' . $productId . '?output_format=JSON');
 
-            // DEBUG: Ver qué está recibiendo realmente
+            // DEBUG: Ver qué está recibiendo realmente - usar bin2hex para ver TODO
             \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): JSON recibido - longitud: " . strlen($jsonString) . " bytes");
-            \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Contenido JSON completo: " . var_export($jsonString, true));
+            \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): JSON en HEXADECIMAL: " . bin2hex($jsonString));
+            \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): JSON como texto: " . print_r($jsonString, true));
 
             $data = json_decode($jsonString, true);
 
@@ -326,9 +327,9 @@ class PrestashopConnection
                 // Igual que línea 228: get('orders/' . $orderId)
                 $xmlString = $this->webService->get('products/' . $productId);
 
-                // DEBUG: Ver qué está recibiendo realmente
+                // DEBUG: Ver qué está recibiendo realmente - usar bin2hex para ver TODO
                 \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): XML recibido - longitud: " . strlen($xmlString) . " bytes");
-                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): Contenido XML completo: " . var_export($xmlString, true));
+                \FacturaScripts\Core\Tools::log()->error("getProduct({$productId}): XML en HEXADECIMAL: " . bin2hex($xmlString));
 
                 // Buscar ecotax directamente en el string XML (método infalible)
                 if (preg_match('/<ecotax[^>]*>(.*?)<\/ecotax>/is', $xmlString, $matches)) {
