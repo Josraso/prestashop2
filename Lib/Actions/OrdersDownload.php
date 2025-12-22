@@ -755,11 +755,11 @@ class OrdersDownload
                 if ($groupId > 0) {
                     $groupName = $this->connection->getCustomerGroup($groupId);
                     if (!empty($groupName)) {
-                        $codgrupo = $this->getOrCreateGrupoClientes($groupName);
+                        $codgrupo = $this->getOrCreateGrupoClientes($groupId, $groupName);
                         if (!empty($codgrupo) && $clienteExistente->codgrupo !== $codgrupo) {
                             $clienteExistente->codgrupo = $codgrupo;
                             $actualizado = true;
-                            Tools::log()->info("Actualizando grupo de cliente: {$groupName} ({$codgrupo})");
+                            Tools::log()->info("Actualizando grupo de cliente: {$groupName} (Código: {$codgrupo}, ID PrestaShop: {$groupId})");
                         }
                     }
                 }
@@ -882,10 +882,10 @@ class OrdersDownload
         if ($groupId > 0) {
             $groupName = $this->connection->getCustomerGroup($groupId);
             if (!empty($groupName)) {
-                $codgrupo = $this->getOrCreateGrupoClientes($groupName);
+                $codgrupo = $this->getOrCreateGrupoClientes($groupId, $groupName);
                 if (!empty($codgrupo)) {
                     $cliente->codgrupo = $codgrupo;
-                    Tools::log()->info("Asignando grupo de cliente: {$groupName} ({$codgrupo})");
+                    Tools::log()->info("Asignando grupo de cliente: {$groupName} (Código: {$codgrupo}, ID PrestaShop: {$groupId})");
                 }
             }
         }
@@ -955,65 +955,57 @@ class OrdersDownload
     }
 
     /**
-     * Crea o obtiene un grupo de clientes en FacturaScripts
+     * Crea o obtiene un grupo de clientes en FacturaScripts usando el ID y nombre de PrestaShop
      *
-     * @param string $groupName Nombre del grupo desde PrestaShop
+     * @param int $groupId ID del grupo en PrestaShop
+     * @param string $groupName Nombre COMPLETO del grupo desde PrestaShop
      * @return string|null Código del grupo creado o existente
      */
-    private function getOrCreateGrupoClientes(string $groupName): ?string
+    private function getOrCreateGrupoClientes(int $groupId, string $groupName): ?string
     {
-        if (empty($groupName)) {
+        if ($groupId <= 0 || empty($groupName)) {
             return null;
         }
 
-        // Intentar cargar el modelo GrupoClientes
+        // Generar código basado en el ID de PrestaShop (MÁXIMO 6 caracteres)
+        // Grupos 1-999: usar el número directamente ("3", "15", "999")
+        // Grupos 1000+: usar "G" + número ("G1000", "G1234") truncado a 6 caracteres
+        if ($groupId <= 999) {
+            $codgrupo = (string)$groupId;
+        } else {
+            $codgrupo = 'G' . $groupId;
+            $codgrupo = substr($codgrupo, 0, 6); // Truncar a 6 caracteres
+        }
+
+        Tools::log()->info("Procesando grupo PrestaShop ID {$groupId}: '{$groupName}' → Código FacturaScripts: '{$codgrupo}'");
+
+        // Intentar cargar el grupo por código
         $grupoClientes = new \FacturaScripts\Dinamic\Model\GrupoClientes();
 
-        // Buscar si ya existe un grupo con este nombre
-        $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('nombre', $groupName)];
-        if ($grupoClientes->loadFromCode('', $where)) {
-            // Ya existe, devolver su código
-            Tools::log()->debug("Grupo '{$groupName}' ya existe con código: {$grupoClientes->codgrupo}");
+        if ($grupoClientes->loadFromCode($codgrupo)) {
+            // Ya existe, verificar si el nombre ha cambiado en PrestaShop
+            if ($grupoClientes->nombre !== $groupName) {
+                $grupoClientes->nombre = $groupName;
+                $grupoClientes->save();
+                Tools::log()->info("✓ Grupo '{$codgrupo}' actualizado con nuevo nombre: '{$groupName}'");
+            } else {
+                Tools::log()->debug("✓ Grupo '{$codgrupo}' ya existe: '{$groupName}'");
+            }
             return $grupoClientes->codgrupo;
         }
 
-        // No existe, crear nuevo grupo
-        $grupoClientes->nombre = $groupName;
-
-        // Generar código único para el grupo (MÁXIMO 6 caracteres - requisito FacturaScripts)
-        $baseCode = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $groupName));
-        $baseCode = substr($baseCode, 0, 4); // Dejar espacio para números si hay colisión
-
-        if (empty($baseCode)) {
-            $baseCode = 'GRP';
-        }
-
-        $codgrupo = substr($baseCode, 0, 6); // Máximo 6 caracteres
-        $counter = 1;
-
-        // Asegurar que el código sea único
-        $tempGrupo = new \FacturaScripts\Dinamic\Model\GrupoClientes();
-        while ($tempGrupo->loadFromCode($codgrupo)) {
-            // Si hay colisión, añadir número (ej: DESC1, DESC2...)
-            $suffix = (string)$counter;
-            $maxBase = 6 - strlen($suffix);
-            $codgrupo = substr($baseCode, 0, $maxBase) . $suffix;
-            $counter++;
-            if ($counter > 99) {
-                // Fallback: usar número aleatorio
-                $codgrupo = 'G' . rand(10000, 99999);
-                $codgrupo = substr($codgrupo, 0, 6);
-                break;
-            }
-        }
-
+        // No existe, crear nuevo grupo con el nombre COMPLETO de PrestaShop
         $grupoClientes->codgrupo = $codgrupo;
+        $grupoClientes->nombre = $groupName; // NOMBRE COMPLETO sin modificar
 
         if ($grupoClientes->save()) {
-            Tools::log()->info("✓ Grupo de clientes creado: '{$groupName}' con código '{$codgrupo}'");
+            Tools::log()->info("✓ Grupo de clientes CREADO:");
+            Tools::log()->info("  - Código: '{$codgrupo}'");
+            Tools::log()->info("  - Nombre: '{$groupName}'");
+            Tools::log()->info("  - ID PrestaShop: {$groupId}");
             return $codgrupo;
         } else {
-            Tools::log()->error("Error al crear grupo de clientes: '{$groupName}'");
+            Tools::log()->error("Error al crear grupo de clientes: '{$groupName}' (Código: {$codgrupo})");
             return null;
         }
     }
