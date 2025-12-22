@@ -70,6 +70,39 @@
         <null>NO</null>
         <default>1</default>
     </column>
+    <column>
+        <name>db_host</name>
+        <type>character varying(255)</type>
+        <null>YES</null>
+        <default>localhost</default>
+    </column>
+    <column>
+        <name>db_name</name>
+        <type>character varying(100)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>db_user</name>
+        <type>character varying(100)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>db_password</name>
+        <type>character varying(255)</type>
+        <null>YES</null>
+    </column>
+    <column>
+        <name>db_prefix</name>
+        <type>character varying(20)</type>
+        <null>YES</null>
+        <default>ps_</default>
+    </column>
+    <column>
+        <name>use_db_for_ecotax</name>
+        <type>boolean</type>
+        <null>NO</null>
+        <default>false</default>
+    </column>
     <constraint>
         <name>prestashop_config_pkey</name>
         <type>PRIMARY KEY (id)</type>
