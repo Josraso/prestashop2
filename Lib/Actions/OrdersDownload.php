@@ -408,29 +408,19 @@ class OrdersDownload
             }
         }
 
-        // Leer ecotax: PRIMERO intentar BD (1 query), luego webservice como fallback
+        // Leer ecotax: SOLO desde BD (sin fallback a webservice)
         $ecotaxData = [];
-        if (!empty($productIds)) {
-            // Estrategia 1: Lectura desde BD (mucho más rápida y fiable)
-            if ($this->config->use_db_for_ecotax) {
-                Tools::log()->info("ECOTAX: Leyendo desde base de datos de PrestaShop...");
-                $ecotaxData = $this->connection->getEcotaxFromDatabase($productIds);
+        if (!empty($productIds) && $this->config->use_db_for_ecotax) {
+            Tools::log()->info("ECOTAX: Leyendo desde base de datos de PrestaShop...");
+            $ecotaxData = $this->connection->getEcotaxFromDatabase($productIds);
 
-                if (!empty($ecotaxData)) {
-                    Tools::log()->info("✓ ECOTAX: Leídos " . count($ecotaxData) . " productos desde BD");
-                }
+            if (!empty($ecotaxData)) {
+                Tools::log()->info("✓ ECOTAX: Leídos " . count($ecotaxData) . " productos desde BD");
+            } else {
+                Tools::log()->warning("ECOTAX: No se pudieron leer productos desde BD - verifica la configuración");
             }
-
-            // Estrategia 2: Fallback a webservice si BD no está configurada o falló
-            if (empty($ecotaxData)) {
-                Tools::log()->warning("ECOTAX: Usando webservice como fallback (puede ser lento)...");
-                foreach ($productIds as $productId) {
-                    $productData = $this->connection->getProduct($productId);
-                    if ($productData && isset($productData['ecotax'])) {
-                        $ecotaxData[$productId] = (float)$productData['ecotax'];
-                    }
-                }
-            }
+        } elseif (!$this->config->use_db_for_ecotax) {
+            Tools::log()->debug("ECOTAX: Lectura desde BD desactivada - productos sin ecotax");
         }
 
         // Procesar líneas de pedido
