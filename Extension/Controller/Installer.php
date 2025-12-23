@@ -59,61 +59,73 @@ class Installer
         $db = new \FacturaScripts\Core\Base\DataBase();
 
         // Verificar si la tabla existe primero
-        $tableExists = $db->select("SELECT table_name FROM information_schema.tables
+        $tableExists = $db->select("SELECT table_name FROM information_schema.columns
                                     WHERE table_schema = DATABASE()
-                                    AND table_name = 'prestashop_config'");
+                                    AND table_name = 'prestashop_config'
+                                    LIMIT 1");
 
         if (empty($tableExists)) {
             \FacturaScripts\Core\Tools::log()->info("Tabla prestashop_config no existe aún, se creará desde XML");
             return;
         }
 
-        // La tabla existe, verificar si las columnas existen
-        $columns = $db->select("SELECT column_name FROM information_schema.columns
-                                WHERE table_schema = DATABASE()
-                                AND table_name = 'prestashop_config'
-                                AND column_name IN ('db_host', 'db_name', 'db_user', 'db_password', 'db_prefix', 'use_db_for_ecotax')");
+        \FacturaScripts\Core\Tools::log()->info("Verificando columnas de BD para ecotax...");
 
-        if (count($columns) >= 6) {
-            \FacturaScripts\Core\Tools::log()->debug("✓ Columnas de BD para ecotax ya existen");
-            return;
-        }
-
-        \FacturaScripts\Core\Tools::log()->info("Añadiendo columnas de BD para ecotax...");
-
-        // Añadir columnas SIN default (evita problemas de sintaxis SQL entre motores)
-        $alterQueries = [
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_host VARCHAR(255)",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_name VARCHAR(100)",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_user VARCHAR(100)",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_password VARCHAR(255)",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_prefix VARCHAR(20)",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS use_db_for_ecotax BOOLEAN"
+        // Definir columnas que necesitamos
+        $columnasNecesarias = [
+            'db_host' => "VARCHAR(255)",
+            'db_name' => "VARCHAR(100)",
+            'db_user' => "VARCHAR(100)",
+            'db_password' => "VARCHAR(255)",
+            'db_prefix' => "VARCHAR(20)",
+            'use_db_for_ecotax' => "BOOLEAN"
         ];
 
+        $columnasCreadas = 0;
         $errores = 0;
-        foreach ($alterQueries as $query) {
-            try {
-                $db->exec($query);
-            } catch (\Exception $e) {
-                \FacturaScripts\Core\Tools::log()->error("Error ejecutando: " . $query . " - " . $e->getMessage());
-                $errores++;
+
+        foreach ($columnasNecesarias as $columna => $tipo) {
+            // Verificar si la columna existe
+            $existe = $db->select("SELECT column_name FROM information_schema.columns
+                                   WHERE table_schema = DATABASE()
+                                   AND table_name = 'prestashop_config'
+                                   AND column_name = '{$columna}'");
+
+            if (empty($existe)) {
+                // La columna NO existe, crearla
+                \FacturaScripts\Core\Tools::log()->info("Creando columna: {$columna}");
+
+                try {
+                    $sql = "ALTER TABLE prestashop_config ADD COLUMN {$columna} {$tipo}";
+                    $db->exec($sql);
+                    $columnasCreadas++;
+                    \FacturaScripts\Core\Tools::log()->info("✓ Columna '{$columna}' creada correctamente");
+                } catch (\Exception $e) {
+                    \FacturaScripts\Core\Tools::log()->error("✗ Error al crear columna '{$columna}': " . $e->getMessage());
+                    $errores++;
+                }
+            } else {
+                \FacturaScripts\Core\Tools::log()->debug("✓ Columna '{$columna}' ya existe");
             }
         }
 
         // Establecer valores por defecto para registros existentes
-        if ($errores === 0) {
+        if ($columnasCreadas > 0 && $errores === 0) {
             try {
                 $db->exec("UPDATE prestashop_config SET db_host = 'localhost' WHERE db_host IS NULL OR db_host = ''");
                 $db->exec("UPDATE prestashop_config SET db_prefix = 'ps_' WHERE db_prefix IS NULL OR db_prefix = ''");
                 $db->exec("UPDATE prestashop_config SET use_db_for_ecotax = false WHERE use_db_for_ecotax IS NULL");
 
-                \FacturaScripts\Core\Tools::log()->info("✓ Columnas de BD para ecotax añadidas correctamente");
+                \FacturaScripts\Core\Tools::log()->info("✓ {$columnasCreadas} columnas nuevas creadas y valores por defecto establecidos");
             } catch (\Exception $e) {
                 \FacturaScripts\Core\Tools::log()->warning("⚠ Columnas creadas pero error al establecer valores por defecto: " . $e->getMessage());
             }
+        } elseif ($columnasCreadas > 0 && $errores > 0) {
+            \FacturaScripts\Core\Tools::log()->warning("⚠ Se crearon {$columnasCreadas} columnas pero hubo {$errores} errores");
+        } elseif ($columnasCreadas === 0 && $errores === 0) {
+            \FacturaScripts\Core\Tools::log()->debug("✓ Todas las columnas ya existen, no es necesario crear nada");
         } else {
-            \FacturaScripts\Core\Tools::log()->warning("⚠ Hubo {$errores} errores al añadir columnas de BD");
+            \FacturaScripts\Core\Tools::log()->error("✗ Hubo {$errores} errores al crear columnas");
         }
     }
 
