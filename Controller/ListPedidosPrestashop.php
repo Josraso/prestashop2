@@ -84,6 +84,7 @@ class ListPedidosPrestashop extends Controller
         $this->filterReference = trim($this->request->query->get('reference', ''));
         $this->filterDateFrom = $this->request->query->get('date_from', '');
         $this->filterDateTo = $this->request->query->get('date_to', '');
+        $this->filterState = (int)$this->request->query->get('state', 0);
         $this->limit = (int)$this->request->query->get('limit', 100);
         $this->page = (int)$this->request->query->get('page', 1);
         $this->offset = ($this->page - 1) * $this->limit;
@@ -95,10 +96,11 @@ class ListPedidosPrestashop extends Controller
             !empty($this->filterReference) ||
             !empty($this->filterDateFrom) ||
             !empty($this->filterDateTo) ||
+            $this->filterState > 0 ||
             $this->filterImportado !== 'todos'
         );
 
-        // Cargar nombres de estados de PrestaShop
+        // Cargar nombres de estados de PrestaShop desde API
         $this->loadEstadosPrestaShop();
 
         // Solo cargar pedidos si hay filtros activos
@@ -149,6 +151,7 @@ class ListPedidosPrestashop extends Controller
                 $orderId = (int)$orderXml->id;
                 $orderRef = (string)$orderXml->reference;
                 $orderDate = (string)$orderXml->date_add;
+                $orderState = (int)$orderXml->current_state;
 
                 // Aplicar filtro "ID hasta"
                 if ($this->filterIdTo > 0 && $orderId > $this->filterIdTo) {
@@ -160,13 +163,24 @@ class ListPedidosPrestashop extends Controller
                     continue;
                 }
 
-                // Aplicar filtro de fecha desde
-                if (!empty($this->filterDateFrom) && $orderDate < $this->filterDateFrom) {
-                    continue;
+                // Aplicar filtro de fecha desde (comparar solo la fecha, sin hora)
+                if (!empty($this->filterDateFrom)) {
+                    $orderDateOnly = substr($orderDate, 0, 10); // YYYY-MM-DD
+                    if ($orderDateOnly < $this->filterDateFrom) {
+                        continue;
+                    }
                 }
 
-                // Aplicar filtro de fecha hasta
-                if (!empty($this->filterDateTo) && $orderDate > $this->filterDateTo . ' 23:59:59') {
+                // Aplicar filtro de fecha hasta (comparar solo la fecha, sin hora)
+                if (!empty($this->filterDateTo)) {
+                    $orderDateOnly = substr($orderDate, 0, 10); // YYYY-MM-DD
+                    if ($orderDateOnly > $this->filterDateTo) {
+                        continue;
+                    }
+                }
+
+                // Aplicar filtro de estado
+                if ($this->filterState > 0 && $orderState != $this->filterState) {
                     continue;
                 }
 
@@ -337,11 +351,17 @@ class ListPedidosPrestashop extends Controller
             return;
         }
 
+        $totalSelected = count($orderIds);
+        Tools::log()->info("Iniciando importación masiva de {$totalSelected} pedidos: [" . implode(', ', $orderIds) . "]");
+
         $config = PrestashopConfig::getActive();
         if (!$config) {
             Tools::log()->error('Configuración no encontrada');
             return;
         }
+
+        // Crear conexión UNA SOLA VEZ fuera del bucle (más eficiente)
+        $connection = new PrestashopConnection($config);
 
         $imported = 0;
         $skipped = 0;
@@ -349,13 +369,18 @@ class ListPedidosPrestashop extends Controller
 
         foreach ($orderIds as $orderId) {
             $orderId = (int)$orderId;
-            if ($orderId <= 0) continue;
+            if ($orderId <= 0) {
+                Tools::log()->warning("ID inválido ignorado: {$orderId}");
+                continue;
+            }
 
             try {
-                $connection = new PrestashopConnection($config);
+                Tools::log()->debug("Procesando pedido {$orderId}...");
+
                 $orderXml = $connection->getOrder($orderId);
 
                 if (!$orderXml) {
+                    Tools::log()->error("Pedido {$orderId} no encontrado en PrestaShop");
                     $errors++;
                     continue;
                 }
@@ -369,16 +394,18 @@ class ListPedidosPrestashop extends Controller
 
                 if ($result && is_array($result)) {
                     $imported++;
+                    Tools::log()->info("✓ Pedido {$orderId} importado correctamente");
                 } else {
                     $skipped++;
+                    Tools::log()->info("⊘ Pedido {$orderId} ya estaba importado");
                 }
             } catch (\Exception $e) {
                 $errors++;
-                Tools::log()->error("Error importando pedido {$orderId}: " . $e->getMessage());
+                Tools::log()->error("✗ Error importando pedido {$orderId}: " . $e->getMessage());
             }
         }
 
-        Tools::log()->info("Importación masiva: {$imported} importados, {$skipped} ya existían, {$errors} errores");
+        Tools::log()->info("✓ Importación masiva completada: {$imported} importados, {$skipped} ya existían, {$errors} errores de {$totalSelected} totales");
 
         // Recargar pedidos
         $this->pedidos = [];
@@ -390,13 +417,67 @@ class ListPedidosPrestashop extends Controller
     }
 
     /**
-     * Carga los nombres de estados de PrestaShop
+     * Carga los nombres de estados de PrestaShop desde la API
      */
     private function loadEstadosPrestaShop(): void
     {
-        // Mapeo básico de estados de PrestaShop (los más comunes)
-        // Se pueden ampliar según las necesidades
-        $this->estadosPrestaShop = [
+        $config = PrestashopConfig::getActive();
+
+        if (!$config || !$config->shop_url || !$config->api_key) {
+            // Si no hay configuración, usar mapeo básico
+            $this->estadosPrestaShop = $this->getDefaultStates();
+            return;
+        }
+
+        try {
+            $connection = new PrestashopConnection($config);
+            $webService = $connection->getWebService();
+
+            // Obtener estados desde PrestaShop
+            $xmlString = $webService->get('order_states', null, null, ['display' => 'full']);
+            $xml = simplexml_load_string($xmlString);
+
+            if (isset($xml->order_states->order_state)) {
+                foreach ($xml->order_states->order_state as $state) {
+                    $id = (int)$state->id;
+
+                    // Obtener nombre (primer idioma disponible)
+                    $nombre = 'Estado ' . $id;
+                    if (isset($state->name->language)) {
+                        foreach ($state->name->language as $lang) {
+                            $nombre = trim((string)$lang);
+                            if (!empty($nombre)) {
+                                break;
+                            }
+                        }
+                    }
+
+                    // Determinar color según el nombre o características
+                    $color = $this->getColorForState($nombre, $state);
+
+                    $this->estadosPrestaShop[$id] = [
+                        'nombre' => $nombre,
+                        'color' => $color
+                    ];
+                }
+
+                Tools::log()->debug("✓ Cargados " . count($this->estadosPrestaShop) . " estados desde PrestaShop");
+            } else {
+                // Si falla, usar mapeo por defecto
+                $this->estadosPrestaShop = $this->getDefaultStates();
+            }
+        } catch (\Exception $e) {
+            Tools::log()->warning("No se pudieron cargar estados desde PrestaShop, usando valores por defecto: " . $e->getMessage());
+            $this->estadosPrestaShop = $this->getDefaultStates();
+        }
+    }
+
+    /**
+     * Devuelve mapeo de estados por defecto
+     */
+    private function getDefaultStates(): array
+    {
+        return [
             1 => ['nombre' => 'Esperando pago', 'color' => 'secondary'],
             2 => ['nombre' => 'Pago aceptado', 'color' => 'success'],
             3 => ['nombre' => 'Preparación en curso', 'color' => 'info'],
@@ -409,8 +490,56 @@ class ListPedidosPrestashop extends Controller
             10 => ['nombre' => 'Esperando pago bancario', 'color' => 'secondary'],
             11 => ['nombre' => 'Pago remoto aceptado', 'color' => 'success'],
             12 => ['nombre' => 'En proceso', 'color' => 'info'],
-            13 => ['nombre' => 'Problema pagament', 'color' => 'danger']
+            13 => ['nombre' => 'Problema pago', 'color' => 'danger']
         ];
+    }
+
+    /**
+     * Determina el color del badge según el nombre o características del estado
+     */
+    private function getColorForState(string $nombre, $state): string
+    {
+        $nombreLower = strtolower($nombre);
+
+        // Verde: estados positivos/completados
+        if (stripos($nombreLower, 'pago aceptado') !== false ||
+            stripos($nombreLower, 'entregado') !== false ||
+            stripos($nombreLower, 'completado') !== false ||
+            stripos($nombreLower, 'pagado') !== false) {
+            return 'success';
+        }
+
+        // Azul: en proceso/enviado
+        if (stripos($nombreLower, 'enviado') !== false ||
+            stripos($nombreLower, 'en proceso') !== false ||
+            stripos($nombreLower, 'preparación') !== false ||
+            stripos($nombreLower, 'transito') !== false) {
+            return 'primary';
+        }
+
+        // Rojo: cancelados/errores
+        if (stripos($nombreLower, 'cancelado') !== false ||
+            stripos($nombreLower, 'error') !== false ||
+            stripos($nombreLower, 'rechazado') !== false ||
+            stripos($nombreLower, 'anulado') !== false) {
+            return 'danger';
+        }
+
+        // Amarillo: reembolsos/devoluciones
+        if (stripos($nombreLower, 'reembolso') !== false ||
+            stripos($nombreLower, 'devol') !== false ||
+            stripos($nombreLower, 'reposición') !== false) {
+            return 'warning';
+        }
+
+        // Cyan: informativo
+        if (stripos($nombreLower, 'espera') !== false ||
+            stripos($nombreLower, 'pendiente') !== false) {
+            return 'info';
+        }
+
+        // Por defecto: gris
+        return 'secondary';
     }
 
     /**
