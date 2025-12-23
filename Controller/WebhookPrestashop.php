@@ -126,6 +126,27 @@ class WebhookPrestashop extends Controller
                 die();
             }
 
+            // CRÍTICO: Verificar fecha del ÚLTIMO ESTADO (no fecha de creación del pedido)
+            if (!empty($config->import_since_date)) {
+                $lastStatusDate = $this->getLastOrderStatusDate($orderXml, $orderId, $connection);
+
+                if ($lastStatusDate && $lastStatusDate < $config->import_since_date) {
+                    $webhookLog->markProcessed(false, "Fecha del último estado ({$lastStatusDate}) anterior a la configurada ({$config->import_since_date})");
+                    Tools::log()->warning("⊘ Webhook omitido: Pedido {$orderId} con último estado del {$lastStatusDate} anterior a {$config->import_since_date}");
+
+                    http_response_code(200);
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Fecha del último estado anterior a la configurada',
+                        'order_id' => $orderId,
+                        'last_status_date' => $lastStatusDate,
+                        'import_since_date' => $config->import_since_date
+                    ]);
+                    die();
+                }
+            }
+
             // Importar el pedido
             $importer = new OrdersDownload();
             $reflection = new \ReflectionClass($importer);
@@ -393,6 +414,74 @@ class WebhookPrestashop extends Controller
         header('Content-Type: application/json');
         echo json_encode($data);
         die();
+    }
+
+    /**
+     * Obtiene la fecha del ÚLTIMO estado del pedido
+     * Usa el historial de estados para obtener la fecha más reciente
+     */
+    private function getLastOrderStatusDate(\SimpleXMLElement $orderXml, int $orderId, PrestashopConnection $connection): ?string
+    {
+        try {
+            // Intentar 1: order_state_histories (plural) en associations del XML
+            if (isset($orderXml->associations->order_state_histories->order_state_history)) {
+                $histories = $orderXml->associations->order_state_histories->order_state_history;
+
+                $historyArray = [];
+                foreach ($histories as $history) {
+                    $historyArray[] = [
+                        'date' => (string)$history->date_add,
+                        'id_order_state' => (int)$history->id_order_state
+                    ];
+                }
+
+                if (!empty($historyArray)) {
+                    usort($historyArray, function($a, $b) {
+                        return strtotime($b['date']) - strtotime($a['date']);
+                    });
+
+                    return $historyArray[0]['date'];
+                }
+            }
+
+            // Intentar 2: order_history (singular) en associations del XML
+            if (isset($orderXml->associations->order_history)) {
+                $histories = $orderXml->associations->order_history;
+
+                $historyArray = [];
+                foreach ($histories as $history) {
+                    $historyArray[] = [
+                        'date' => (string)$history->date_add,
+                        'id_order_state' => (int)$history->id_order_state
+                    ];
+                }
+
+                if (!empty($historyArray)) {
+                    usort($historyArray, function($a, $b) {
+                        return strtotime($b['date']) - strtotime($a['date']);
+                    });
+
+                    return $historyArray[0]['date'];
+                }
+            }
+
+            // Intentar 3: Desde API order_histories
+            $history = $connection->getOrderHistory($orderId);
+
+            if (!empty($history)) {
+                $lastStatus = $history[0];
+                $dateAdd = (string)$lastStatus->date_add;
+
+                if (!empty($dateAdd)) {
+                    return $dateAdd;
+                }
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Tools::log()->error("Error obteniendo fecha del último estado en webhook: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**
