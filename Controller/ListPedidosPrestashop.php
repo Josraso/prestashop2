@@ -216,16 +216,20 @@ class ListPedidosPrestashop extends Controller
             $orderData['lines'] = [];
 
             foreach ($products as $product) {
+                $quantity = (int)$product['product_quantity'];
+                $unitPriceExcl = (float)$product['unit_price_tax_excl'];
+                $unitPriceIncl = (float)$product['unit_price_tax_incl'];
+
                 $orderData['lines'][] = [
-                    'product_id' => (int)$product->product_id,
-                    'product_name' => (string)$product->product_name,
-                    'product_reference' => (string)$product->product_reference,
-                    'product_quantity' => (int)$product->product_quantity,
-                    'unit_price_tax_excl' => (float)$product->unit_price_tax_excl,
-                    'unit_price_tax_incl' => (float)$product->unit_price_tax_incl,
-                    'total_price_tax_excl' => (float)$product->total_price_tax_excl,
-                    'total_price_tax_incl' => (float)$product->total_price_tax_incl,
-                    'product_price' => (float)$product->product_price
+                    'product_id' => (int)$product['product_id'],
+                    'product_name' => (string)$product['product_name'],
+                    'product_reference' => (string)$product['product_reference'],
+                    'product_quantity' => $quantity,
+                    'unit_price_tax_excl' => $unitPriceExcl,
+                    'unit_price_tax_incl' => $unitPriceIncl,
+                    'total_price_tax_excl' => $unitPriceExcl * $quantity,
+                    'total_price_tax_incl' => $unitPriceIncl * $quantity,
+                    'tax_rate' => (float)($product['tax_rate'] ?? 0)
                 ];
             }
 

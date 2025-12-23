@@ -234,13 +234,9 @@
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             {% if not pedido.importado %}
-                                                <form method="post" style="display: inline;">
-                                                    <input type="hidden" name="action" value="import-order"/>
-                                                    <input type="hidden" name="order_id" value="{{ pedido.id }}"/>
-                                                    <button type="submit" class="btn btn-sm btn-primary" title="Importar ahora">
-                                                        <i class="fas fa-download"></i>
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-sm btn-primary btn-import-single" data-order-id="{{ pedido.id }}" title="Importar ahora">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
                                             {% endif %}
                                         </td>
                                     </tr>
@@ -374,6 +370,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Manejador para importar pedido individual
+    const btnImportSingle = document.querySelectorAll('.btn-import-single');
+    btnImportSingle.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const orderId = this.getAttribute('data-order-id');
+            if (confirm('¿Deseas importar el pedido #' + orderId + '?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = '<input type="hidden" name="action" value="import-order"/>' +
+                                '<input type="hidden" name="order_id" value="' + orderId + '"/>';
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    });
+
     // Manejador para ver detalles del pedido
     const btnViewOrders = document.querySelectorAll('.btn-view-order');
     btnViewOrders.forEach(function(btn) {
@@ -404,7 +416,11 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             dataType: 'json',
             success: function(response) {
+                console.log('Respuesta del servidor:', response);
                 if (response.success && response.data) {
+                    console.log('Líneas de productos:', response.data.lines);
+                    console.log('Dirección facturación:', response.data.invoice_address);
+                    console.log('Dirección envío:', response.data.delivery_address);
                     renderOrderDetails(response.data);
 
                     // Mostrar botón de importar si no está importado
@@ -566,6 +582,11 @@ document.addEventListener('DOMContentLoaded', function() {
             $('body').append(form);
             form.submit();
         }
+    });
+
+    // Asegurar que los botones de cerrar funcionen
+    $('#orderDetailsModal .close, #orderDetailsModal [data-dismiss="modal"]').on('click', function() {
+        $('#orderDetailsModal').modal('hide');
     });
 });
 </script>
