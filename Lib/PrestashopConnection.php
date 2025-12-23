@@ -231,12 +231,35 @@ class PrestashopConnection
         }
 
         try {
-            $xmlString = $this->webService->get('orders/' . $orderId);
+            // IGUAL que getOrder(), usar filtros en vez de orders/{id} directo
+            // En PrestaShop 1.7.6.9 y 1.7.7.8, orders/{id} solo devuelve atributos sin datos completos
+            $params = [
+                'filter[id]' => '[' . $orderId . ']',
+                'display' => 'full',
+                'limit' => 1
+            ];
+
+            $xmlString = $this->webService->get('orders', null, null, $params);
             $xml = simplexml_load_string($xmlString);
 
             $products = [];
-            if (isset($xml->order->associations->order_rows->order_row)) {
-                foreach ($xml->order->associations->order_rows->order_row as $row) {
+
+            // Navegar hasta el pedido (misma lógica que getOrder)
+            $orderXml = null;
+            if (isset($xml->orders->order)) {
+                $order = $xml->orders->order;
+                if (is_array($order) || $order instanceof \Traversable) {
+                    foreach ($order as $o) {
+                        $orderXml = $o;
+                        break;
+                    }
+                } else {
+                    $orderXml = $order;
+                }
+            }
+
+            if ($orderXml && isset($orderXml->associations->order_rows->order_row)) {
+                foreach ($orderXml->associations->order_rows->order_row as $row) {
                     $unitPriceTaxIncl = (float)$row->unit_price_tax_incl;
                     $unitPriceTaxExcl = (float)$row->unit_price_tax_excl;
 
@@ -261,6 +284,7 @@ class PrestashopConnection
 
             return $products;
         } catch (\Exception $e) {
+            Tools::log()->error('Error en getOrderProducts(' . $orderId . '): ' . $e->getMessage());
             return [];
         }
     }

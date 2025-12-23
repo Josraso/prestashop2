@@ -361,11 +361,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const formImportSelected = document.getElementById('formImportSelected');
     if (formImportSelected) {
         formImportSelected.addEventListener('submit', function(e) {
-            const count = document.querySelectorAll('.order-checkbox:checked').length;
-            if (count > 0) {
-                if (!confirm('¿Seguro que deseas importar ' + count + ' pedido(s)?')) {
-                    e.preventDefault();
-                }
+            const checkedBoxes = document.querySelectorAll('.order-checkbox:checked');
+            const count = checkedBoxes.length;
+
+            console.log('=== DEBUG IMPORTACIÓN MASIVA ===');
+            console.log('Checkboxes marcados:', count);
+
+            // Mostrar IDs seleccionados
+            const selectedIds = [];
+            checkedBoxes.forEach(function(checkbox) {
+                selectedIds.push(checkbox.value);
+            });
+            console.log('IDs seleccionados:', selectedIds);
+
+            if (count === 0) {
+                alert('No hay pedidos seleccionados');
+                e.preventDefault();
+                return;
+            }
+
+            if (!confirm('¿Seguro que deseas importar ' + count + ' pedido(s)?')) {
+                e.preventDefault();
             }
         });
     }
