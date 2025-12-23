@@ -155,12 +155,23 @@
             </div>
             <div class="card-body">
                 {% if fsc.pedidos|length > 0 %}
-                    <form method="post" id="formImportSelected">
+                    <form method="post" id="formImportSelected" action="{{ fsc.url() }}">
                         <input type="hidden" name="action" value="import-selected"/>
+
+                        {# Preservar todos los filtros para que no se pierdan al recargar #}
+                        <input type="hidden" name="id_from" value="{{ fsc.filterIdFrom }}"/>
+                        <input type="hidden" name="id_to" value="{{ fsc.filterIdTo }}"/>
+                        <input type="hidden" name="reference" value="{{ fsc.filterReference }}"/>
+                        <input type="hidden" name="date_from" value="{{ fsc.filterDateFrom }}"/>
+                        <input type="hidden" name="date_to" value="{{ fsc.filterDateTo }}"/>
+                        <input type="hidden" name="state" value="{{ fsc.filterState }}"/>
+                        <input type="hidden" name="importado" value="{{ fsc.filterImportado }}"/>
+                        <input type="hidden" name="limit" value="{{ fsc.limit }}"/>
+                        <input type="hidden" name="page" value="{{ fsc.page }}"/>
 
                         {# Botones importar seleccionados #}
                         <div class="mb-3">
-                            <button type="button" class="btn btn-sm btn-primary" id="btnImportSelected" disabled>
+                            <button type="submit" class="btn btn-sm btn-primary" id="btnImportSelected" disabled>
                                 <i class="fas fa-download"></i> Importar Seleccionados (<span id="selectedCount">0</span>)
                             </button>
                             <button type="button" class="btn btn-sm btn-secondary" id="btnSelectAll">
@@ -357,10 +368,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Manejador del botón de importación masiva
-    const btnImportSelectedBtn = document.getElementById('btnImportSelected');
-    if (btnImportSelectedBtn) {
-        btnImportSelectedBtn.addEventListener('click', function(e) {
+    // Validación antes de enviar el formulario de importación masiva
+    const formImportSelected = document.getElementById('formImportSelected');
+    if (formImportSelected) {
+        formImportSelected.addEventListener('submit', function(e) {
             const checkedBoxes = document.querySelectorAll('.order-checkbox:checked');
             const count = checkedBoxes.length;
 
@@ -374,42 +385,24 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             console.log('IDs seleccionados:', selectedIds);
 
+            // Verificar que hay al menos uno seleccionado
             if (count === 0) {
                 alert('No hay pedidos seleccionados');
-                return;
+                e.preventDefault();
+                return false;
             }
 
+            // Confirmación
             if (!confirm('¿Seguro que deseas importar ' + count + ' pedido(s)?')) {
-                return;
+                e.preventDefault();
+                return false;
             }
 
-            // Crear FormData y enviar vía POST tradicional (no AJAX para recargar la página)
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '{{ fsc.url() }}';
+            console.log('Formulario se va a enviar con', count, 'pedidos');
+            console.log('Datos del formulario:', new FormData(formImportSelected));
 
-            // Añadir action
-            const inputAction = document.createElement('input');
-            inputAction.type = 'hidden';
-            inputAction.name = 'action';
-            inputAction.value = 'import-selected';
-            form.appendChild(inputAction);
-
-            // Añadir cada ID seleccionado
-            selectedIds.forEach(function(id) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'order_ids[]';
-                input.value = id;
-                form.appendChild(input);
-            });
-
-            console.log('Form a enviar:', form);
-            console.log('Inputs en form:', form.querySelectorAll('input'));
-
-            // Añadir al body y enviar
-            document.body.appendChild(form);
-            form.submit();
+            // Permitir el envío
+            return true;
         });
     }
 
