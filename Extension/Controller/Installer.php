@@ -13,58 +13,23 @@ class Installer
 {
     public function install()
     {
-        // IMPORTANTE: Crear columnas de BD para ecotax si no existen
-        $this->createDatabaseColumns();
+        // Las tablas se crean automáticamente desde los archivos XML en Table/
+        // NO intentar hacer ALTER TABLE aquí porque las tablas aún no existen
 
-        // Crear producto "Gastos de envío" si no existe
+        \FacturaScripts\Core\Tools::log()->info("Iniciando instalación del plugin PrestaShop...");
+
+        // Crear productos necesarios para importación
         $this->createShippingProduct();
-
-        // Crear producto "Empaquetado para regalo" si no existe
         $this->createGiftWrappingProduct();
-
-        // Crear producto "Ecotasa Neumáticos" si no existe
         $this->createEcotaxProduct();
+
+        \FacturaScripts\Core\Tools::log()->info("✓ Instalación del plugin PrestaShop completada");
     }
 
     public function uninstall()
     {
-        // No eliminar el producto al desinstalar por si hay albaranes que lo usan
-    }
-
-    /**
-     * Crea las columnas de configuración de BD para ecotax si no existen
-     */
-    private function createDatabaseColumns(): void
-    {
-        $db = new \FacturaScripts\Core\Base\DataBase();
-
-        // Verificar si las columnas ya existen
-        $sql = "SELECT column_name FROM information_schema.columns
-                WHERE table_name = 'prestashop_config' AND column_name = 'db_host'";
-        $result = $db->select($sql);
-
-        if (!empty($result)) {
-            // Las columnas ya existen
-            return;
-        }
-
-        // Crear las columnas
-        $alterQueries = [
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_host VARCHAR(255) DEFAULT 'localhost'",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_name VARCHAR(100)",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_user VARCHAR(100)",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_password VARCHAR(255)",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_prefix VARCHAR(20) DEFAULT 'ps_'",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS use_db_for_ecotax BOOLEAN DEFAULT false"
-        ];
-
-        foreach ($alterQueries as $query) {
-            if (!$db->exec($query)) {
-                \FacturaScripts\Core\Tools::log()->error("Error creando columna: " . $query);
-            }
-        }
-
-        \FacturaScripts\Core\Tools::log()->info("✓ Columnas de BD para ecotax creadas correctamente");
+        // No eliminar productos ni tablas al desinstalar por si hay datos que los usan
+        \FacturaScripts\Core\Tools::log()->info("Plugin PrestaShop desinstalado (datos conservados)");
     }
 
     private function createShippingProduct(): void
@@ -74,7 +39,7 @@ class Installer
         $where = [new DataBaseWhere('referencia', 'ENVIO-PRESTASHOP')];
 
         if ($variante->loadFromCode('', $where)) {
-            // Ya existe, no hacer nada
+            \FacturaScripts\Core\Tools::log()->info("✓ Producto 'Gastos de envío' ya existe (ENVIO-PRESTASHOP)");
             return;
         }
 
@@ -92,8 +57,12 @@ class Installer
             $variante = $producto->getVariants()[0] ?? null;
             if ($variante) {
                 $variante->referencia = 'ENVIO-PRESTASHOP';
-                $variante->save();
+                if ($variante->save()) {
+                    \FacturaScripts\Core\Tools::log()->info("✓ Producto 'Gastos de envío' creado (ENVIO-PRESTASHOP)");
+                }
             }
+        } else {
+            \FacturaScripts\Core\Tools::log()->error("✗ Error al crear producto 'Gastos de envío'");
         }
     }
 
@@ -104,7 +73,7 @@ class Installer
         $where = [new DataBaseWhere('referencia', 'REGALO-PRESTASHOP')];
 
         if ($variante->loadFromCode('', $where)) {
-            // Ya existe, no hacer nada
+            \FacturaScripts\Core\Tools::log()->info("✓ Producto 'Empaquetado para regalo' ya existe (REGALO-PRESTASHOP)");
             return;
         }
 
@@ -122,8 +91,12 @@ class Installer
             $variante = $producto->getVariants()[0] ?? null;
             if ($variante) {
                 $variante->referencia = 'REGALO-PRESTASHOP';
-                $variante->save();
+                if ($variante->save()) {
+                    \FacturaScripts\Core\Tools::log()->info("✓ Producto 'Empaquetado para regalo' creado (REGALO-PRESTASHOP)");
+                }
             }
+        } else {
+            \FacturaScripts\Core\Tools::log()->error("✗ Error al crear producto 'Empaquetado para regalo'");
         }
     }
 
@@ -134,7 +107,7 @@ class Installer
         $where = [new DataBaseWhere('referencia', 'ECOTAX')];
 
         if ($variante->loadFromCode('', $where)) {
-            // Ya existe, no hacer nada
+            \FacturaScripts\Core\Tools::log()->info("✓ Producto 'Ecotasa NFU' ya existe (ECOTAX)");
             return;
         }
 
@@ -152,8 +125,12 @@ class Installer
             $variante = $producto->getVariants()[0] ?? null;
             if ($variante) {
                 $variante->referencia = 'ECOTAX';
-                $variante->save();
+                if ($variante->save()) {
+                    \FacturaScripts\Core\Tools::log()->info("✓ Producto 'Ecotasa NFU' creado (ECOTAX)");
+                }
             }
+        } else {
+            \FacturaScripts\Core\Tools::log()->error("✗ Error al crear producto 'Ecotasa NFU'");
         }
     }
 }
