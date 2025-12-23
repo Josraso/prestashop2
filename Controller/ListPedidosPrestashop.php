@@ -116,6 +116,135 @@ class ListPedidosPrestashop extends Controller
             $this->importSelectedAction();
         } elseif ($action === 'export-csv') {
             $this->exportCSV();
+        } elseif ($action === 'get-order-details') {
+            $this->getOrderDetailsAjax();
+        }
+    }
+
+    /**
+     * Obtiene detalles completos de un pedido para mostrar en modal (AJAX)
+     */
+    private function getOrderDetailsAjax(): void
+    {
+        header('Content-Type: application/json');
+
+        $orderId = (int)$this->request->request->get('order_id', 0);
+
+        if ($orderId <= 0) {
+            echo json_encode(['error' => 'ID de pedido inválido']);
+            die();
+        }
+
+        $config = PrestashopConfig::getActive();
+        if (!$config) {
+            echo json_encode(['error' => 'Configuración no encontrada']);
+            die();
+        }
+
+        try {
+            $connection = new PrestashopConnection($config);
+            $orderXml = $connection->getOrder($orderId);
+
+            if (!$orderXml) {
+                echo json_encode(['error' => 'Pedido no encontrado']);
+                die();
+            }
+
+            // Obtener datos básicos del pedido
+            $orderData = [
+                'id' => (int)$orderXml->id,
+                'reference' => (string)$orderXml->reference,
+                'total_paid' => (float)$orderXml->total_paid,
+                'total_paid_tax_excl' => (float)$orderXml->total_paid_tax_excl,
+                'total_paid_tax_incl' => (float)$orderXml->total_paid_tax_incl,
+                'total_products' => (float)$orderXml->total_products,
+                'total_products_wt' => (float)$orderXml->total_products_wt,
+                'total_shipping' => (float)$orderXml->total_shipping,
+                'total_shipping_tax_excl' => (float)$orderXml->total_shipping_tax_excl,
+                'total_shipping_tax_incl' => (float)$orderXml->total_shipping_tax_incl,
+                'total_discounts' => (float)$orderXml->total_discounts,
+                'date_add' => (string)$orderXml->date_add,
+                'current_state' => (int)$orderXml->current_state,
+                'payment' => (string)$orderXml->payment,
+                'id_customer' => (int)$orderXml->id_customer,
+                'id_address_delivery' => (int)$orderXml->id_address_delivery,
+                'id_address_invoice' => (int)$orderXml->id_address_invoice
+            ];
+
+            // Obtener nombre del cliente
+            $customerXml = $connection->getCustomer($orderData['id_customer']);
+            if ($customerXml) {
+                $orderData['customer_name'] = trim((string)$customerXml->firstname . ' ' . (string)$customerXml->lastname);
+                $orderData['customer_email'] = (string)$customerXml->email;
+            }
+
+            // Obtener dirección de facturación
+            $addressXml = $connection->getAddress($orderData['id_address_invoice']);
+            if ($addressXml) {
+                $orderData['invoice_address'] = [
+                    'company' => (string)$addressXml->company,
+                    'firstname' => (string)$addressXml->firstname,
+                    'lastname' => (string)$addressXml->lastname,
+                    'address1' => (string)$addressXml->address1,
+                    'address2' => (string)$addressXml->address2,
+                    'postcode' => (string)$addressXml->postcode,
+                    'city' => (string)$addressXml->city,
+                    'phone' => (string)$addressXml->phone,
+                    'phone_mobile' => (string)$addressXml->phone_mobile,
+                    'vat_number' => (string)$addressXml->vat_number
+                ];
+            }
+
+            // Obtener dirección de envío
+            $deliveryXml = $connection->getAddress($orderData['id_address_delivery']);
+            if ($deliveryXml) {
+                $orderData['delivery_address'] = [
+                    'company' => (string)$deliveryXml->company,
+                    'firstname' => (string)$deliveryXml->firstname,
+                    'lastname' => (string)$deliveryXml->lastname,
+                    'address1' => (string)$deliveryXml->address1,
+                    'address2' => (string)$deliveryXml->address2,
+                    'postcode' => (string)$deliveryXml->postcode,
+                    'city' => (string)$deliveryXml->city,
+                    'phone' => (string)$deliveryXml->phone,
+                    'phone_mobile' => (string)$deliveryXml->phone_mobile
+                ];
+            }
+
+            // Obtener líneas de productos
+            $products = $connection->getOrderProducts($orderId);
+            $orderData['lines'] = [];
+
+            foreach ($products as $product) {
+                $orderData['lines'][] = [
+                    'product_id' => (int)$product->product_id,
+                    'product_name' => (string)$product->product_name,
+                    'product_reference' => (string)$product->product_reference,
+                    'product_quantity' => (int)$product->product_quantity,
+                    'unit_price_tax_excl' => (float)$product->unit_price_tax_excl,
+                    'unit_price_tax_incl' => (float)$product->unit_price_tax_incl,
+                    'total_price_tax_excl' => (float)$product->total_price_tax_excl,
+                    'total_price_tax_incl' => (float)$product->total_price_tax_incl,
+                    'product_price' => (float)$product->product_price
+                ];
+            }
+
+            // Verificar si está importado
+            $albaranModel = new AlbaranCliente();
+            $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('numero2', $orderData['reference'])];
+            $albaran = $albaranModel->all($where, [], 0, 1);
+            $orderData['importado'] = !empty($albaran);
+            if ($orderData['importado'] && !empty($albaran)) {
+                $orderData['idalbaran'] = $albaran[0]->idalbaran;
+                $orderData['codigo_albaran'] = $albaran[0]->codigo;
+            }
+
+            echo json_encode(['success' => true, 'data' => $orderData]);
+            die();
+
+        } catch (\Exception $e) {
+            echo json_encode(['error' => 'Error al obtener detalles: ' . $e->getMessage()]);
+            die();
         }
     }
 
@@ -345,7 +474,14 @@ class ListPedidosPrestashop extends Controller
      */
     private function importSelectedAction(): void
     {
+        // DEBUG: Ver todos los datos POST recibidos
+        $allPostData = $this->request->request->all();
+        Tools::log()->debug("POST data recibido: " . print_r($allPostData, true));
+
         $orderIds = $this->request->request->get('order_ids', []);
+
+        // DEBUG: Ver específicamente order_ids
+        Tools::log()->debug("order_ids raw: " . print_r($orderIds, true));
 
         if (empty($orderIds) || !is_array($orderIds)) {
             Tools::log()->warning('No se seleccionaron pedidos para importar');
@@ -353,7 +489,7 @@ class ListPedidosPrestashop extends Controller
         }
 
         $totalSelected = count($orderIds);
-        Tools::log()->info("Iniciando importación masiva de {$totalSelected} pedidos: [" . implode(', ', $orderIds) . "]");
+        Tools::log()->info("🔵 Iniciando importación masiva de {$totalSelected} pedidos: [" . implode(', ', $orderIds) . "]");
 
         $config = PrestashopConfig::getActive();
         if (!$config) {
