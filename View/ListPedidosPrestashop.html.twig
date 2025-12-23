@@ -155,19 +155,8 @@
             </div>
             <div class="card-body">
                 {% if fsc.pedidos|length > 0 %}
-                    <form method="post" id="formImportSelected" action="{{ fsc.url() }}">
+                    <form method="post" id="formImportSelected">
                         <input type="hidden" name="action" value="import-selected"/>
-
-                        {# Preservar todos los filtros para que no se pierdan al recargar #}
-                        <input type="hidden" name="id_from" value="{{ fsc.filterIdFrom }}"/>
-                        <input type="hidden" name="id_to" value="{{ fsc.filterIdTo }}"/>
-                        <input type="hidden" name="reference" value="{{ fsc.filterReference }}"/>
-                        <input type="hidden" name="date_from" value="{{ fsc.filterDateFrom }}"/>
-                        <input type="hidden" name="date_to" value="{{ fsc.filterDateTo }}"/>
-                        <input type="hidden" name="state" value="{{ fsc.filterState }}"/>
-                        <input type="hidden" name="importado" value="{{ fsc.filterImportado }}"/>
-                        <input type="hidden" name="limit" value="{{ fsc.limit }}"/>
-                        <input type="hidden" name="page" value="{{ fsc.page }}"/>
 
                         {# Botones importar seleccionados #}
                         <div class="mb-3">
@@ -398,8 +387,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
 
-            console.log('Formulario se va a enviar con', count, 'pedidos');
-            console.log('Datos del formulario:', new FormData(formImportSelected));
+            // CRÍTICO: Establecer action con los filtros actuales en la URL
+            // Esto asegura que al recargar la página se mantengan los filtros
+            this.action = window.location.href.split('#')[0]; // URL completa sin hash
+
+            console.log('Form action establecido a:', this.action);
+            console.log('Form se va a enviar');
 
             // Permitir el envío
             return true;
@@ -514,14 +507,17 @@ document.addEventListener('DOMContentLoaded', function() {
         html += '<h6 class="text-primary"><i class="fas fa-file-invoice"></i> Dirección de Facturación</h6>';
         if (data.invoice_address) {
             const inv = data.invoice_address;
-            if (inv.company) html += '<p class="mb-0"><strong>' + inv.company + '</strong></p>';
+            if (inv.company) {
+                html += '<p class="mb-0"><strong>' + inv.company + '</strong></p>';
+            }
             html += '<p class="mb-0">' + inv.firstname + ' ' + inv.lastname + '</p>';
             html += '<p class="mb-0">' + inv.address1 + '</p>';
             if (inv.address2) html += '<p class="mb-0">' + inv.address2 + '</p>';
             html += '<p class="mb-0">' + inv.postcode + ' - ' + inv.city + '</p>';
             if (inv.state) html += '<p class="mb-0">' + inv.state + '</p>';
             if (inv.phone) html += '<p class="mb-0"><i class="fas fa-phone"></i> ' + inv.phone + '</p>';
-            if (inv.vat_number) html += '<p class="mb-0"><small>NIF/CIF: ' + inv.vat_number + '</small></p>';
+            if (inv.phone_mobile && inv.phone_mobile !== inv.phone) html += '<p class="mb-0"><i class="fas fa-mobile"></i> ' + inv.phone_mobile + '</p>';
+            if (inv.vat_number) html += '<p class="mb-0"><small><strong>NIF/CIF:</strong> ' + inv.vat_number + '</small></p>';
         }
         html += '</div>';
 
@@ -537,6 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '<p class="mb-0">' + del.postcode + ' - ' + del.city + '</p>';
             if (del.state) html += '<p class="mb-0">' + del.state + '</p>';
             if (del.phone) html += '<p class="mb-0"><i class="fas fa-phone"></i> ' + del.phone + '</p>';
+            if (del.phone_mobile && del.phone_mobile !== del.phone) html += '<p class="mb-0"><i class="fas fa-mobile"></i> ' + del.phone_mobile + '</p>';
         }
         html += '</div>';
         html += '</div>';
