@@ -160,7 +160,7 @@
 
                         {# Botones importar seleccionados #}
                         <div class="mb-3">
-                            <button type="submit" class="btn btn-sm btn-primary" id="btnImportSelected" disabled>
+                            <button type="button" class="btn btn-sm btn-primary" id="btnImportSelected" disabled>
                                 <i class="fas fa-download"></i> Importar Seleccionados (<span id="selectedCount">0</span>)
                             </button>
                             <button type="button" class="btn btn-sm btn-secondary" id="btnSelectAll">
@@ -357,17 +357,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Confirmación antes de importar
-    const formImportSelected = document.getElementById('formImportSelected');
-    if (formImportSelected) {
-        formImportSelected.addEventListener('submit', function(e) {
+    // Manejador del botón de importación masiva
+    const btnImportSelectedBtn = document.getElementById('btnImportSelected');
+    if (btnImportSelectedBtn) {
+        btnImportSelectedBtn.addEventListener('click', function(e) {
             const checkedBoxes = document.querySelectorAll('.order-checkbox:checked');
             const count = checkedBoxes.length;
 
             console.log('=== DEBUG IMPORTACIÓN MASIVA ===');
             console.log('Checkboxes marcados:', count);
 
-            // Mostrar IDs seleccionados
+            // Obtener IDs seleccionados
             const selectedIds = [];
             checkedBoxes.forEach(function(checkbox) {
                 selectedIds.push(checkbox.value);
@@ -376,13 +376,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (count === 0) {
                 alert('No hay pedidos seleccionados');
-                e.preventDefault();
                 return;
             }
 
             if (!confirm('¿Seguro que deseas importar ' + count + ' pedido(s)?')) {
-                e.preventDefault();
+                return;
             }
+
+            // Crear FormData y enviar vía POST tradicional (no AJAX para recargar la página)
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ fsc.url() }}';
+
+            // Añadir action
+            const inputAction = document.createElement('input');
+            inputAction.type = 'hidden';
+            inputAction.name = 'action';
+            inputAction.value = 'import-selected';
+            form.appendChild(inputAction);
+
+            // Añadir cada ID seleccionado
+            selectedIds.forEach(function(id) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'order_ids[]';
+                input.value = id;
+                form.appendChild(input);
+            });
+
+            console.log('Form a enviar:', form);
+            console.log('Inputs en form:', form.querySelectorAll('input'));
+
+            // Añadir al body y enviar
+            document.body.appendChild(form);
+            form.submit();
         });
     }
 
@@ -499,6 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '<p class="mb-0">' + inv.address1 + '</p>';
             if (inv.address2) html += '<p class="mb-0">' + inv.address2 + '</p>';
             html += '<p class="mb-0">' + inv.postcode + ' - ' + inv.city + '</p>';
+            if (inv.state) html += '<p class="mb-0">' + inv.state + '</p>';
             if (inv.phone) html += '<p class="mb-0"><i class="fas fa-phone"></i> ' + inv.phone + '</p>';
             if (inv.vat_number) html += '<p class="mb-0"><small>NIF/CIF: ' + inv.vat_number + '</small></p>';
         }
@@ -514,6 +542,7 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '<p class="mb-0">' + del.address1 + '</p>';
             if (del.address2) html += '<p class="mb-0">' + del.address2 + '</p>';
             html += '<p class="mb-0">' + del.postcode + ' - ' + del.city + '</p>';
+            if (del.state) html += '<p class="mb-0">' + del.state + '</p>';
             if (del.phone) html += '<p class="mb-0"><i class="fas fa-phone"></i> ' + del.phone + '</p>';
         }
         html += '</div>';

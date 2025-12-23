@@ -181,6 +181,12 @@ class ListPedidosPrestashop extends Controller
             // Obtener dirección de facturación
             $addressXml = $connection->getAddress($orderData['id_address_invoice']);
             if ($addressXml) {
+                $stateId = (int)$addressXml->id_state;
+                $stateName = '';
+                if ($stateId > 0) {
+                    $stateName = $connection->getStateName($stateId);
+                }
+
                 $orderData['invoice_address'] = [
                     'company' => (string)$addressXml->company,
                     'firstname' => (string)$addressXml->firstname,
@@ -189,6 +195,7 @@ class ListPedidosPrestashop extends Controller
                     'address2' => (string)$addressXml->address2,
                     'postcode' => (string)$addressXml->postcode,
                     'city' => (string)$addressXml->city,
+                    'state' => $stateName,
                     'phone' => (string)$addressXml->phone,
                     'phone_mobile' => (string)$addressXml->phone_mobile,
                     'vat_number' => (string)$addressXml->vat_number
@@ -198,6 +205,12 @@ class ListPedidosPrestashop extends Controller
             // Obtener dirección de envío
             $deliveryXml = $connection->getAddress($orderData['id_address_delivery']);
             if ($deliveryXml) {
+                $stateId = (int)$deliveryXml->id_state;
+                $stateName = '';
+                if ($stateId > 0) {
+                    $stateName = $connection->getStateName($stateId);
+                }
+
                 $orderData['delivery_address'] = [
                     'company' => (string)$deliveryXml->company,
                     'firstname' => (string)$deliveryXml->firstname,
@@ -206,6 +219,7 @@ class ListPedidosPrestashop extends Controller
                     'address2' => (string)$deliveryXml->address2,
                     'postcode' => (string)$deliveryXml->postcode,
                     'city' => (string)$deliveryXml->city,
+                    'state' => $stateName,
                     'phone' => (string)$deliveryXml->phone,
                     'phone_mobile' => (string)$deliveryXml->phone_mobile
                 ];
