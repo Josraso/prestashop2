@@ -14,9 +14,12 @@ class Installer
     public function install()
     {
         // Las tablas se crean automáticamente desde los archivos XML en Table/
-        // NO intentar hacer ALTER TABLE aquí porque las tablas aún no existen
+        // DESPUÉS FacturaScripts llama a este hook, así que la tabla YA EXISTE
 
         \FacturaScripts\Core\Tools::log()->info("Iniciando instalación del plugin PrestaShop...");
+
+        // CRÍTICO: Añadir columnas de BD para ecotax si no existen
+        $this->addDatabaseColumnsIfNotExist();
 
         // Crear productos necesarios para importación
         $this->createShippingProduct();
