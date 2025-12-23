@@ -26,10 +26,84 @@ class Installer
         \FacturaScripts\Core\Tools::log()->info("✓ Instalación del plugin PrestaShop completada");
     }
 
+    public function update()
+    {
+        // Este método se ejecuta cada vez que se activa el plugin
+        // Es necesario para añadir columnas nuevas en actualizaciones
+
+        \FacturaScripts\Core\Tools::log()->info("Verificando actualizaciones del plugin PrestaShop...");
+
+        // CRÍTICO: Añadir columnas de BD para ecotax si no existen (para actualizaciones desde versiones antiguas)
+        $this->addDatabaseColumnsIfNotExist();
+
+        // Verificar que existen los productos necesarios
+        $this->createShippingProduct();
+        $this->createGiftWrappingProduct();
+        $this->createEcotaxProduct();
+
+        \FacturaScripts\Core\Tools::log()->info("✓ Verificación de actualizaciones completada");
+    }
+
     public function uninstall()
     {
         // No eliminar productos ni tablas al desinstalar por si hay datos que los usan
         \FacturaScripts\Core\Tools::log()->info("Plugin PrestaShop desinstalado (datos conservados)");
+    }
+
+    /**
+     * Añade las columnas de BD para ecotax si no existen
+     * Este método es necesario para actualizaciones desde versiones antiguas
+     */
+    private function addDatabaseColumnsIfNotExist(): void
+    {
+        $db = new \FacturaScripts\Core\Base\DataBase();
+
+        // Verificar si la tabla existe primero
+        $tableExists = $db->select("SELECT table_name FROM information_schema.tables
+                                    WHERE table_schema = DATABASE()
+                                    AND table_name = 'prestashop_config'");
+
+        if (empty($tableExists)) {
+            \FacturaScripts\Core\Tools::log()->info("Tabla prestashop_config no existe aún, se creará desde XML");
+            return;
+        }
+
+        // La tabla existe, verificar si las columnas existen
+        $columns = $db->select("SELECT column_name FROM information_schema.columns
+                                WHERE table_schema = DATABASE()
+                                AND table_name = 'prestashop_config'
+                                AND column_name IN ('db_host', 'db_name', 'db_user', 'db_password', 'db_prefix', 'use_db_for_ecotax')");
+
+        if (count($columns) >= 6) {
+            \FacturaScripts\Core\Tools::log()->debug("✓ Columnas de BD para ecotax ya existen");
+            return;
+        }
+
+        \FacturaScripts\Core\Tools::log()->info("Añadiendo columnas de BD para ecotax...");
+
+        // Añadir columnas que no existan
+        $alterQueries = [
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_host VARCHAR(255) DEFAULT 'localhost'",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_name VARCHAR(100)",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_user VARCHAR(100)",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_password VARCHAR(255)",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_prefix VARCHAR(20) DEFAULT 'ps_'",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS use_db_for_ecotax BOOLEAN DEFAULT false"
+        ];
+
+        $errores = 0;
+        foreach ($alterQueries as $query) {
+            if (!$db->exec($query)) {
+                \FacturaScripts\Core\Tools::log()->error("Error ejecutando: " . $query);
+                $errores++;
+            }
+        }
+
+        if ($errores === 0) {
+            \FacturaScripts\Core\Tools::log()->info("✓ Columnas de BD para ecotax añadidas correctamente");
+        } else {
+            \FacturaScripts\Core\Tools::log()->warning("⚠ Hubo {$errores} errores al añadir columnas de BD");
+        }
     }
 
     private function createShippingProduct(): void
