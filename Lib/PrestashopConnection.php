@@ -130,8 +130,9 @@ class PrestashopConnection
         }
 
         try {
+            // Si hay sinceId, ordenar ASC desde ese ID. Si no, ordenar DESC para obtener los más recientes
             $params = [
-                'sort' => 'id_ASC',
+                'sort' => $sinceId ? 'id_ASC' : 'id_DESC',
                 'display' => 'full' // Obtener datos completos de una vez
             ];
 
