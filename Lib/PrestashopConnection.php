@@ -123,7 +123,7 @@ class PrestashopConnection
      * @param int|null $sinceId Filtro por ID mínimo (desde qué pedido)
      * @param array $customFilters Filtros adicionales personalizados
      */
-    public function getOrders(?int $limit = null, ?int $sinceId = null, array $customFilters = []): array
+    public function getOrders(?int $limit = null, ?int $sinceId = null, array $customFilters = [], bool $applyConfigStateFilter = true): array
     {
         if (!$this->isConnected()) {
             return [];
@@ -135,10 +135,12 @@ class PrestashopConnection
                 'display' => 'full' // Obtener datos completos de una vez
             ];
 
-            // Filtrar por estados si están configurados
-            $estadosImportar = $this->config->getEstadosArray();
-            if (!empty($estadosImportar)) {
-                $params['filter[current_state]'] = '[' . implode('|', $estadosImportar) . ']';
+            // Filtrar por estados si están configurados (solo si se solicita)
+            if ($applyConfigStateFilter) {
+                $estadosImportar = $this->config->getEstadosArray();
+                if (!empty($estadosImportar)) {
+                    $params['filter[current_state]'] = '[' . implode('|', $estadosImportar) . ']';
+                }
             }
 
             if ($limit) {

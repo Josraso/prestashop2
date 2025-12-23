@@ -138,7 +138,8 @@ class ListPedidosPrestashop extends Controller
             $sinceId = $this->filterIdFrom > 0 ? $this->filterIdFrom : null;
 
             // Obtener hasta 1000 pedidos (los filtraremos en PHP)
-            $ordersXml = $connection->getOrders(1000, $sinceId);
+            // NO aplicar filtro de estados de configuración - el usuario tiene control total de filtros
+            $ordersXml = $connection->getOrders(1000, $sinceId, [], false);
 
             if (!$ordersXml) {
                 Tools::log()->error('No se pudieron obtener pedidos de PrestaShop');
