@@ -61,6 +61,9 @@ class ListPedidosPrestashop extends Controller
     /** @var array */
     public $estadosPrestaShop = [];
 
+    /** @var int */
+    public $filterState = 0;
+
     public function getPageData(): array
     {
         $data = parent::getPageData();
