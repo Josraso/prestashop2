@@ -17,7 +17,7 @@ class EditPrestashopTaxMap extends EditController
     public function getPageData(): array
     {
         $data = parent::getPageData();
-        $data['menu'] = 'admin';
+        $data['menu'] = 'accounting';
         $data['title'] = 'Mapeo de Tipo de IVA';
         $data['icon'] = 'fas fa-percentage';
         return $data;

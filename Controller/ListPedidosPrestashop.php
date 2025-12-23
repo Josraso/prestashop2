@@ -49,7 +49,7 @@ class ListPedidosPrestashop extends Controller
     public function getPageData(): array
     {
         $data = parent::getPageData();
-        $data['menu'] = 'admin';
+        $data['menu'] = 'sales';
         $data['title'] = 'Pedidos PrestaShop';
         $data['icon'] = 'fas fa-shopping-cart';
         return $data;

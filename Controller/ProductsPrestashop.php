@@ -34,7 +34,7 @@ class ProductsPrestashop extends Controller
     public function getPageData(): array
     {
         $data = parent::getPageData();
-        $data['menu'] = 'admin';
+        $data['menu'] = 'warehouse';
         $data['title'] = 'Productos PrestaShop';
         $data['icon'] = 'fas fa-box-open';
         return $data;

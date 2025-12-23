@@ -12,7 +12,7 @@ class ListPrestashopPaymentMap extends ListController
     public function getPageData(): array
     {
         $data = parent::getPageData();
-        $data['menu'] = 'admin';
+        $data['menu'] = 'accounting';
         $data['title'] = 'Mapeo de Formas de Pago';
         $data['icon'] = 'fas fa-credit-card';
         return $data;

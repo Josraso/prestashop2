@@ -46,7 +46,7 @@ class DashboardPrestashop extends Controller
     public function getPageData(): array
     {
         $data = parent::getPageData();
-        $data['menu'] = 'admin';
+        $data['menu'] = 'reports';
         $data['title'] = 'Dashboard PrestaShop';
         $data['icon'] = 'fas fa-chart-line';
         return $data;

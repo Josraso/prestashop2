@@ -12,7 +12,7 @@ class ListPrestashopTaxMap extends ListController
     public function getPageData(): array
     {
         $data = parent::getPageData();
-        $data['menu'] = 'admin';
+        $data['menu'] = 'accounting';
         $data['title'] = 'Mapeo de Tipos de IVA';
         $data['icon'] = 'fas fa-percentage';
         return $data;
