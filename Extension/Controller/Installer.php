@@ -81,26 +81,37 @@ class Installer
 
         \FacturaScripts\Core\Tools::log()->info("Añadiendo columnas de BD para ecotax...");
 
-        // Añadir columnas que no existan
+        // Añadir columnas SIN default (evita problemas de sintaxis SQL entre motores)
         $alterQueries = [
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_host VARCHAR(255) DEFAULT 'localhost'",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_host VARCHAR(255)",
             "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_name VARCHAR(100)",
             "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_user VARCHAR(100)",
             "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_password VARCHAR(255)",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_prefix VARCHAR(20) DEFAULT 'ps_'",
-            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS use_db_for_ecotax BOOLEAN DEFAULT false"
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS db_prefix VARCHAR(20)",
+            "ALTER TABLE prestashop_config ADD COLUMN IF NOT EXISTS use_db_for_ecotax BOOLEAN"
         ];
 
         $errores = 0;
         foreach ($alterQueries as $query) {
-            if (!$db->exec($query)) {
-                \FacturaScripts\Core\Tools::log()->error("Error ejecutando: " . $query);
+            try {
+                $db->exec($query);
+            } catch (\Exception $e) {
+                \FacturaScripts\Core\Tools::log()->error("Error ejecutando: " . $query . " - " . $e->getMessage());
                 $errores++;
             }
         }
 
+        // Establecer valores por defecto para registros existentes
         if ($errores === 0) {
-            \FacturaScripts\Core\Tools::log()->info("✓ Columnas de BD para ecotax añadidas correctamente");
+            try {
+                $db->exec("UPDATE prestashop_config SET db_host = 'localhost' WHERE db_host IS NULL OR db_host = ''");
+                $db->exec("UPDATE prestashop_config SET db_prefix = 'ps_' WHERE db_prefix IS NULL OR db_prefix = ''");
+                $db->exec("UPDATE prestashop_config SET use_db_for_ecotax = false WHERE use_db_for_ecotax IS NULL");
+
+                \FacturaScripts\Core\Tools::log()->info("✓ Columnas de BD para ecotax añadidas correctamente");
+            } catch (\Exception $e) {
+                \FacturaScripts\Core\Tools::log()->warning("⚠ Columnas creadas pero error al establecer valores por defecto: " . $e->getMessage());
+            }
         } else {
             \FacturaScripts\Core\Tools::log()->warning("⚠ Hubo {$errores} errores al añadir columnas de BD");
         }
