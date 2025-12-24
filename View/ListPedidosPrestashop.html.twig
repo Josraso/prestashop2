@@ -155,12 +155,12 @@
             </div>
             <div class="card-body">
                 {% if fsc.pedidos|length > 0 %}
-                    <form method="post" id="formImportSelected">
+                    <form method="post" id="formImportSelected" action="">
                         <input type="hidden" name="action" value="import-selected"/>
 
                         {# Botones importar seleccionados #}
                         <div class="mb-3">
-                            <button type="button" class="btn btn-sm btn-primary" id="btnImportSelected" disabled>
+                            <button type="submit" class="btn btn-sm btn-primary" id="btnImportSelected" disabled>
                                 <i class="fas fa-download"></i> Importar Seleccionados (<span id="selectedCount">0</span>)
                             </button>
                             <button type="button" class="btn btn-sm btn-secondary" id="btnSelectAll">
@@ -357,53 +357,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Manejador del botón de importación masiva usando AJAX
-    const btnImportSelectedBtn = document.getElementById('btnImportSelected');
-    if (btnImportSelectedBtn) {
-        btnImportSelectedBtn.addEventListener('click', function(e) {
+    // Validación del formulario de importación masiva
+    const formImportSelected = document.getElementById('formImportSelected');
+    if (formImportSelected) {
+        formImportSelected.addEventListener('submit', function(e) {
             const checkedBoxes = document.querySelectorAll('.order-checkbox:checked');
             const count = checkedBoxes.length;
 
             console.log('=== DEBUG IMPORTACIÓN MASIVA ===');
             console.log('Checkboxes marcados:', count);
 
-            // Obtener IDs seleccionados
-            const selectedIds = [];
-            checkedBoxes.forEach(function(checkbox) {
-                selectedIds.push(checkbox.value);
-            });
-            console.log('IDs seleccionados:', selectedIds);
-
             if (count === 0) {
                 alert('No hay pedidos seleccionados');
-                return;
+                e.preventDefault();
+                return false;
             }
 
             if (!confirm('¿Seguro que deseas importar ' + count + ' pedido(s)?')) {
-                return;
+                e.preventDefault();
+                return false;
             }
 
-            // ENVIAR VIA AJAX para asegurar que llegan los datos
-            console.log('Enviando vía AJAX...');
+            // Establecer action con URL completa incluyendo filtros
+            const currentUrl = window.location.href.split('#')[0];
+            const separator = currentUrl.includes('?') ? '&' : '?';
 
-            $.ajax({
-                url: '{{ fsc.url() }}',
-                method: 'POST',
-                data: {
-                    action: 'import-selected',
-                    order_ids: selectedIds
-                },
-                success: function(response) {
-                    console.log('Respuesta recibida, recargando página...');
-                    // Recargar la página con los filtros actuales
-                    window.location.href = window.location.href.split('#')[0];
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error en AJAX:', error);
-                    alert('Error al importar pedidos. Revisa los logs.');
-                    window.location.reload();
-                }
-            });
+            // Añadir filtro para mostrar solo pendientes después de importar
+            this.action = currentUrl + separator + 'importado=pendiente';
+
+            console.log('Form action:', this.action);
+            console.log('Enviando formulario...');
+
+            // Permitir submit
+            return true;
         });
     }
 
