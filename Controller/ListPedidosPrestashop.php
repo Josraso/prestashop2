@@ -287,9 +287,10 @@ class ListPedidosPrestashop extends Controller
             // Si hay filtro "ID desde", usarlo en la API para obtener desde ese punto
             $sinceId = $this->filterIdFrom > 0 ? $this->filterIdFrom : null;
 
-            // Obtener TODOS los pedidos (sin límite) - la paginación se hará en PHP
+            // Obtener muchos pedidos (límite muy alto) - la paginación se hará en PHP
+            // Usamos 50000 porque PrestaShop API requiere un límite, null causa error
             // NO aplicar filtro de estados de configuración - el usuario tiene control total de filtros
-            $ordersXml = $connection->getOrders(null, $sinceId, [], false);
+            $ordersXml = $connection->getOrders(50000, $sinceId, [], false);
 
             if (!$ordersXml) {
                 Tools::log()->error('No se pudieron obtener pedidos de PrestaShop');

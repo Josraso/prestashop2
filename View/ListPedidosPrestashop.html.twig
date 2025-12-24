@@ -154,7 +154,7 @@
 
         {# ADVERTENCIA SOBRE LÍMITE DE IMPORTACIÓN #}
         {% if fsc.hasFilters %}
-        <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+        <div class="alert alert-warning fade show mb-3" role="alert" id="warningLimiteImport" style="position: relative; padding-right: 40px;">
             <i class="fas fa-exclamation-triangle"></i>
             <strong>Límite de importación:</strong>
             Por limitaciones del servidor, puedes importar un <strong>máximo de 50 pedidos</strong> a la vez.
@@ -162,9 +162,11 @@
             <small class="d-block mt-1">
                 💡 <em>Algunos servidores pueden requerir lotes más pequeños (20-30 pedidos) si experimentas errores de timeout.</em>
             </small>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
+            <i class="fas fa-times-circle" onclick="document.getElementById('warningLimiteImport').style.display='none'"
+               style="position: absolute; top: 12px; right: 12px; cursor: pointer; color: #856404; font-size: 18px; opacity: 0.7;"
+               onmouseover="this.style.opacity='1'"
+               onmouseout="this.style.opacity='0.7'"
+               title="Cerrar"></i>
         </div>
         {% endif %}
 
