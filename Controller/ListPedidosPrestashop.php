@@ -495,8 +495,6 @@ class ListPedidosPrestashop extends Controller
         // LEER DIRECTAMENTE DE $_POST porque $this->request->request no funciona
         $orderIds = isset($_POST['order_ids']) ? $_POST['order_ids'] : [];
 
-        Tools::log()->warning("order_ids desde \$_POST: " . print_r($orderIds, true));
-
         if (empty($orderIds) || !is_array($orderIds)) {
             Tools::log()->warning('No se seleccionaron pedidos para importar');
             return;

@@ -1,6 +1,18 @@
 {% extends "Master/MenuTemplate.html.twig" %}
 
 {% block body %}
+
+{# OVERLAY DE LOADING PARA IMPORTACIÓN MASIVA #}
+<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; color:#fff;">
+        <div style="font-size:48px; margin-bottom:20px;">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        <h3 style="color:#fff; margin-bottom:10px;">Importando pedidos...</h3>
+        <p style="color:#fff; font-size:16px;">Por favor, espera mientras se procesan los pedidos.<br>Esto puede tardar unos momentos.</p>
+    </div>
+</div>
+
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
@@ -406,6 +418,9 @@ document.addEventListener('DOMContentLoaded', function() {
             btnImportMassive.disabled = true;
             btnImportMassive.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando ' + count + ' pedido(s)...';
 
+            // MOSTRAR OVERLAY DE LOADING
+            document.getElementById('loadingOverlay').style.display = 'block';
+
             // Submit directo del formulario
             formImport.submit();
         });
@@ -417,6 +432,9 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             const orderId = this.getAttribute('data-order-id');
             if (confirm('¿Deseas importar el pedido #' + orderId + '?')) {
+                // Mostrar overlay de loading
+                document.getElementById('loadingOverlay').style.display = 'block';
+
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.innerHTML = '<input type="hidden" name="action" value="import-order"/>' +
@@ -519,6 +537,10 @@ document.addEventListener('DOMContentLoaded', function() {
         html += '<h6 class="text-primary"><i class="fas fa-file-invoice"></i> Dirección de Facturación</h6>';
         if (data.invoice_address) {
             const inv = data.invoice_address;
+
+            // DEBUG: Ver qué valor tiene vat_number
+            console.log('🔍 DEBUG vat_number:', inv.vat_number, 'tipo:', typeof inv.vat_number);
+
             if (inv.company) {
                 html += '<p class="mb-0"><strong>' + inv.company + '</strong></p>';
             }
@@ -529,7 +551,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (inv.state) html += '<p class="mb-0">' + inv.state + '</p>';
             if (inv.phone) html += '<p class="mb-0"><i class="fas fa-phone"></i> ' + inv.phone + '</p>';
             if (inv.phone_mobile && inv.phone_mobile !== inv.phone) html += '<p class="mb-0"><i class="fas fa-mobile"></i> ' + inv.phone_mobile + '</p>';
-            if (inv.vat_number) html += '<p class="mb-0"><small><strong>NIF/CIF:</strong> ' + inv.vat_number + '</small></p>';
+            // SIEMPRE mostrar NIF/CIF aunque esté vacío (para todas las direcciones, no solo empresas)
+            if (inv.vat_number && inv.vat_number.trim() !== '') {
+                html += '<p class="mb-0"><strong>NIF/CIF:</strong> ' + inv.vat_number + '</p>';
+            }
         }
         html += '</div>';
 
@@ -622,6 +647,12 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#btnImportFromModal').on('click', function() {
         const orderId = $(this).attr('data-order-id');
         if (orderId && confirm('¿Deseas importar este pedido?')) {
+            // Mostrar overlay de loading
+            document.getElementById('loadingOverlay').style.display = 'block';
+
+            // Cerrar modal antes de importar
+            $('#orderDetailsModal').modal('hide');
+
             // Crear form y enviarlo
             const form = $('<form method="post"></form>');
             form.append('<input type="hidden" name="action" value="import-order"/>');
