@@ -152,6 +152,22 @@
             </div>
         </div>
 
+        {# ADVERTENCIA SOBRE LÍMITE DE IMPORTACIÓN #}
+        {% if fsc.hasFilters %}
+        <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Límite de importación:</strong>
+            Por limitaciones del servidor, puedes importar un <strong>máximo de 50 pedidos</strong> a la vez.
+            Si necesitas importar más, realiza la operación en varios lotes.
+            <small class="d-block mt-1">
+                💡 <em>Algunos servidores pueden requerir lotes más pequeños (20-30 pedidos) si experimentas errores de timeout.</em>
+            </small>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        {% endif %}
+
         {# Tabla de pedidos #}
         <div class="card shadow">
             <div class="card-header py-3 d-flex justify-content-between align-items-center">

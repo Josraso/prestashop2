@@ -85,7 +85,7 @@ class ListPedidosPrestashop extends Controller
         $this->filterDateFrom = $this->request->query->get('date_from', '');
         $this->filterDateTo = $this->request->query->get('date_to', '');
         $this->filterState = (int)$this->request->query->get('state', 0);
-        $this->limit = (int)$this->request->query->get('limit', 100);
+        $this->limit = (int)$this->request->query->get('limit', 50);  // Máximo 50 por limitaciones del servidor
         $this->page = (int)$this->request->query->get('page', 1);
         $this->offset = ($this->page - 1) * $this->limit;
 
@@ -374,12 +374,19 @@ class ListPedidosPrestashop extends Controller
             $this->totalPedidos = count($filteredOrders);
             $this->totalPages = ceil($this->totalPedidos / $this->limit);
 
-            // Obtener solo la página actual
-            $ordersPage = array_slice($filteredOrders, $this->offset, $this->limit);
-
-            // Resetear contadores
+            // CONTAR IMPORTADOS Y PENDIENTES SOBRE TODOS LOS FILTRADOS (no solo la página)
             $this->importados = 0;
             $this->pendientes = 0;
+            foreach ($filteredOrders as $orderData) {
+                if ($orderData['importado']) {
+                    $this->importados++;
+                } else {
+                    $this->pendientes++;
+                }
+            }
+
+            // Obtener solo la página actual
+            $ordersPage = array_slice($filteredOrders, $this->offset, $this->limit);
 
             foreach ($ordersPage as $orderData) {
                 $orderXml = $orderData['xml'];
@@ -390,12 +397,6 @@ class ListPedidosPrestashop extends Controller
                 $currentState = (int)$orderXml->current_state;
                 $totalPaid = (float)$orderXml->total_paid;
                 $dateAdd = (string)$orderXml->date_add;
-
-                if ($importado) {
-                    $this->importados++;
-                } else {
-                    $this->pendientes++;
-                }
 
                 // Obtener nombre del cliente
                 $customerName = $this->getCustomerName($connection, $customerId);
@@ -474,9 +475,9 @@ class ListPedidosPrestashop extends Controller
             $result = $method->invoke($importer, $orderXml);
 
             if ($result && is_array($result)) {
-                Tools::log()->info("✓ Pedido {$orderId} importado correctamente");
+                Tools::log()->notice("✓ Pedido #{$orderId} importado correctamente. Actualiza la vista para verlo como 'Importado'.");
             } else {
-                Tools::log()->warning("Pedido {$orderId} ya estaba importado");
+                Tools::log()->info("⊘ El pedido #{$orderId} ya estaba importado previamente.");
             }
 
             // Recargar pedidos
@@ -486,7 +487,8 @@ class ListPedidosPrestashop extends Controller
             $this->loadPedidos();
 
         } catch (\Exception $e) {
-            Tools::log()->error("Error importando pedido {$orderId}: " . $e->getMessage());
+            Tools::log()->error("✗ Error importando pedido #{$orderId}: " . $e->getMessage());
+            Tools::log()->warning("Revisa la configuración de PrestaShop y los permisos de la API.");
         }
     }
 
@@ -558,6 +560,22 @@ class ListPedidosPrestashop extends Controller
         }
 
         Tools::log()->info("✓ Importación masiva completada: {$imported} importados, {$skipped} ya existían, {$errors} errores de {$totalSelected} totales");
+
+        // MOSTRAR MENSAJES AL USUARIO sobre qué pasó
+        if ($imported > 0) {
+            Tools::log()->notice("✓ {$imported} pedido(s) importado(s) correctamente.");
+        }
+        if ($skipped > 0) {
+            Tools::log()->info("⊘ {$skipped} pedido(s) ya estaban importados previamente.");
+        }
+        if ($errors > 0) {
+            Tools::log()->warning("✗ {$errors} pedido(s) con errores. Revisa el log para más detalles.");
+        }
+
+        // Mensaje final con instrucciones
+        if ($imported > 0 || $errors > 0) {
+            Tools::log()->notice("📋 Actualiza los filtros o recarga la página para ver los cambios. Los pedidos importados ahora aparecerán como 'Importado'.");
+        }
 
         // Recargar pedidos
         $this->pedidos = [];
