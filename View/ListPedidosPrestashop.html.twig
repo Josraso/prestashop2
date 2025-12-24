@@ -357,14 +357,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // IMPORTACIÓN MASIVA CON AJAX PURO - SIN FORMULARIOS
+    // IMPORTACIÓN MASIVA - FORMULARIO TRADICIONAL SIMPLE
     const btnImportMassive = document.getElementById('btnImportSelected');
-    if (btnImportMassive) {
+    const formImport = document.getElementById('formImportSelected');
+
+    if (btnImportMassive && formImport) {
         btnImportMassive.addEventListener('click', function(e) {
             const checkedBoxes = document.querySelectorAll('.order-checkbox:checked');
             const count = checkedBoxes.length;
 
-            console.log('=== IMPORTACIÓN MASIVA VIA AJAX ===');
+            console.log('=== IMPORTACIÓN MASIVA ===');
             console.log('Checkboxes marcados:', count);
 
             if (count === 0) {
@@ -372,39 +374,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Obtener IDs
-            const selectedIds = [];
-            checkedBoxes.forEach(function(checkbox) {
-                selectedIds.push(parseInt(checkbox.value));
-            });
-            console.log('IDs a importar:', selectedIds);
-
             if (!confirm('¿Seguro que deseas importar ' + count + ' pedido(s)?')) {
                 return;
             }
 
-            // Deshabilitar botón durante la importación
-            btnImportMassive.disabled = true;
-            btnImportMassive.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
-
-            // ENVIAR VIA $.post() - lo más simple que existe
-            $.post('{{ fsc.url() }}', {
-                action: 'import-selected',
-                order_ids: selectedIds
-            }, function(response) {
-                console.log('Importación completada, recargando...');
-
-                // Recargar la página manteniendo filtros y mostrando solo pendientes
-                const currentUrl = window.location.href.split('#')[0];
-                const separator = currentUrl.includes('?') ? '&' : '?';
-                window.location.href = currentUrl + separator + 'importado=pendiente';
-
-            }).fail(function(xhr, status, error) {
-                console.error('Error en AJAX:', error);
-                alert('Error al importar. Revisa los logs.');
-                btnImportMassive.disabled = false;
-                btnImportMassive.innerHTML = '<i class="fas fa-download"></i> Importar Seleccionados (<span id="selectedCount">' + count + '</span>)';
+            // Crear inputs hidden dentro del form
+            checkedBoxes.forEach(function(checkbox) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'order_ids[]';
+                input.value = checkbox.value;
+                formImport.appendChild(input);
+                console.log('Añadido input hidden:', checkbox.value);
             });
+
+            console.log('Enviando formulario...');
+            // Submit directo del formulario
+            formImport.submit();
         });
     }
 
