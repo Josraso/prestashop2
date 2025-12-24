@@ -77,6 +77,14 @@ class ListPedidosPrestashop extends Controller
     {
         parent::privateCore($response, $user, $permissions);
 
+        // ========== LOGGING BRUTAL DE TODO LO QUE LLEGA ==========
+        Tools::log()->warning("========== INICIO REQUEST ==========");
+        Tools::log()->warning("REQUEST METHOD: " . $_SERVER['REQUEST_METHOD']);
+        Tools::log()->warning("GET params: " . print_r($_GET, true));
+        Tools::log()->warning("POST params: " . print_r($_POST, true));
+        Tools::log()->warning("REQUEST params: " . print_r($this->request->request->all(), true));
+        Tools::log()->warning("========== FIN REQUEST ==========");
+
         // Obtener filtros
         $this->filterIdFrom = (int)$this->request->query->get('id_from', 0);
         $this->filterIdTo = (int)$this->request->query->get('id_to', 0);
