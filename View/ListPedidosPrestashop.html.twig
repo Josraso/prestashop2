@@ -378,14 +378,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
 
+            // CRÍTICO: Crear hidden inputs porque los checkboxes no se envían correctamente
+            // Primero eliminar hidden inputs previos si existen
+            const oldHiddens = this.querySelectorAll('input[name="order_ids_hidden[]"]');
+            oldHiddens.forEach(function(input) {
+                input.remove();
+            });
+
+            // Crear un hidden input por cada checkbox marcado
+            checkedBoxes.forEach(function(checkbox) {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'order_ids[]';
+                hidden.value = checkbox.value;
+                formImportSelected.appendChild(hidden);
+                console.log('Añadido hidden input con valor:', checkbox.value);
+            });
+
             // Establecer action con URL completa incluyendo filtros
             const currentUrl = window.location.href.split('#')[0];
             const separator = currentUrl.includes('?') ? '&' : '?';
-
-            // Añadir filtro para mostrar solo pendientes después de importar
             this.action = currentUrl + separator + 'importado=pendiente';
 
             console.log('Form action:', this.action);
+            console.log('Total hidden inputs añadidos:', checkedBoxes.length);
             console.log('Enviando formulario...');
 
             // Permitir submit
