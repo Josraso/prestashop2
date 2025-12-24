@@ -374,9 +374,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // LÍMITE DE SEGURIDAD - Máximo 50 pedidos a la vez
+            if (count > 50) {
+                alert('No puedes importar más de 50 pedidos a la vez.\nSelecciona menos pedidos y repite la operación.');
+                return;
+            }
+
             if (!confirm('¿Seguro que deseas importar ' + count + ' pedido(s)?')) {
                 return;
             }
+
+            // CRÍTICO: Limpiar inputs hidden previos para evitar duplicados
+            const oldHiddens = formImport.querySelectorAll('input[name="order_ids[]"]');
+            oldHiddens.forEach(function(input) {
+                input.remove();
+            });
 
             // Crear inputs hidden dentro del form
             checkedBoxes.forEach(function(checkbox) {
@@ -388,7 +400,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Añadido input hidden:', checkbox.value);
             });
 
-            console.log('Enviando formulario...');
+            console.log('Enviando formulario con', count, 'pedidos...');
+
+            // Deshabilitar botón y mostrar feedback
+            btnImportMassive.disabled = true;
+            btnImportMassive.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando ' + count + ' pedido(s)...';
+
             // Submit directo del formulario
             formImport.submit();
         });
