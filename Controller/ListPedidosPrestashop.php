@@ -500,14 +500,10 @@ class ListPedidosPrestashop extends Controller
      */
     private function importSelectedAction(): void
     {
-        // DEBUG: Ver todos los datos POST recibidos
-        $allPostData = $this->request->request->all();
-        Tools::log()->debug("POST data recibido: " . print_r($allPostData, true));
+        // LEER DIRECTAMENTE DE $_POST porque $this->request->request no funciona
+        $orderIds = isset($_POST['order_ids']) ? $_POST['order_ids'] : [];
 
-        $orderIds = $this->request->request->get('order_ids', []);
-
-        // DEBUG: Ver específicamente order_ids
-        Tools::log()->debug("order_ids raw: " . print_r($orderIds, true));
+        Tools::log()->warning("order_ids desde \$_POST: " . print_r($orderIds, true));
 
         if (empty($orderIds) || !is_array($orderIds)) {
             Tools::log()->warning('No se seleccionaron pedidos para importar');
