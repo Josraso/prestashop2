@@ -538,9 +538,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.invoice_address) {
             const inv = data.invoice_address;
 
-            // DEBUG: Ver qué valor tiene vat_number
-            console.log('🔍 DEBUG vat_number:', inv.vat_number, 'tipo:', typeof inv.vat_number);
-
             if (inv.company) {
                 html += '<p class="mb-0"><strong>' + inv.company + '</strong></p>';
             }
@@ -551,9 +548,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (inv.state) html += '<p class="mb-0">' + inv.state + '</p>';
             if (inv.phone) html += '<p class="mb-0"><i class="fas fa-phone"></i> ' + inv.phone + '</p>';
             if (inv.phone_mobile && inv.phone_mobile !== inv.phone) html += '<p class="mb-0"><i class="fas fa-mobile"></i> ' + inv.phone_mobile + '</p>';
-            // SIEMPRE mostrar NIF/CIF aunque esté vacío (para todas las direcciones, no solo empresas)
+
+            // Mostrar CIF/NIF para empresas
             if (inv.vat_number && inv.vat_number.trim() !== '') {
-                html += '<p class="mb-0"><strong>NIF/CIF:</strong> ' + inv.vat_number + '</p>';
+                html += '<p class="mb-0"><strong>CIF/NIF:</strong> ' + inv.vat_number + '</p>';
+            }
+            // Mostrar DNI para particulares
+            if (inv.dni && inv.dni.trim() !== '') {
+                html += '<p class="mb-0"><strong>DNI:</strong> ' + inv.dni + '</p>';
             }
         }
         html += '</div>';
@@ -571,6 +573,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (del.state) html += '<p class="mb-0">' + del.state + '</p>';
             if (del.phone) html += '<p class="mb-0"><i class="fas fa-phone"></i> ' + del.phone + '</p>';
             if (del.phone_mobile && del.phone_mobile !== del.phone) html += '<p class="mb-0"><i class="fas fa-mobile"></i> ' + del.phone_mobile + '</p>';
+
+            // Mostrar CIF/NIF para empresas
+            if (del.vat_number && del.vat_number.trim() !== '') {
+                html += '<p class="mb-0"><strong>CIF/NIF:</strong> ' + del.vat_number + '</p>';
+            }
+            // Mostrar DNI para particulares
+            if (del.dni && del.dni.trim() !== '') {
+                html += '<p class="mb-0"><strong>DNI:</strong> ' + del.dni + '</p>';
+            }
         }
         html += '</div>';
         html += '</div>';

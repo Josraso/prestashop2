@@ -198,7 +198,8 @@ class ListPedidosPrestashop extends Controller
                     'state' => $stateName,
                     'phone' => (string)$addressXml->phone,
                     'phone_mobile' => (string)$addressXml->phone_mobile,
-                    'vat_number' => (string)$addressXml->vat_number
+                    'vat_number' => (string)$addressXml->vat_number,
+                    'dni' => (string)$addressXml->dni  // DNI para particulares
                 ];
             }
 
@@ -221,7 +222,9 @@ class ListPedidosPrestashop extends Controller
                     'city' => (string)$deliveryXml->city,
                     'state' => $stateName,
                     'phone' => (string)$deliveryXml->phone,
-                    'phone_mobile' => (string)$deliveryXml->phone_mobile
+                    'phone_mobile' => (string)$deliveryXml->phone_mobile,
+                    'vat_number' => (string)$deliveryXml->vat_number,  // CIF si es empresa
+                    'dni' => (string)$deliveryXml->dni  // DNI para particulares
                 ];
             }
 
