@@ -160,7 +160,7 @@
 
                         {# Botones importar seleccionados #}
                         <div class="mb-3">
-                            <button type="submit" class="btn btn-sm btn-primary" id="btnImportSelected" disabled>
+                            <button type="button" class="btn btn-sm btn-primary" id="btnImportSelected" disabled>
                                 <i class="fas fa-download"></i> Importar Seleccionados (<span id="selectedCount">0</span>)
                             </button>
                             <button type="button" class="btn btn-sm btn-secondary" id="btnSelectAll">
@@ -357,10 +357,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Validación antes de enviar el formulario de importación masiva
-    const formImportSelected = document.getElementById('formImportSelected');
-    if (formImportSelected) {
-        formImportSelected.addEventListener('submit', function(e) {
+    // Manejador del botón de importación masiva usando AJAX
+    const btnImportSelectedBtn = document.getElementById('btnImportSelected');
+    if (btnImportSelectedBtn) {
+        btnImportSelectedBtn.addEventListener('click', function(e) {
             const checkedBoxes = document.querySelectorAll('.order-checkbox:checked');
             const count = checkedBoxes.length;
 
@@ -374,28 +374,36 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             console.log('IDs seleccionados:', selectedIds);
 
-            // Verificar que hay al menos uno seleccionado
             if (count === 0) {
                 alert('No hay pedidos seleccionados');
-                e.preventDefault();
-                return false;
+                return;
             }
 
-            // Confirmación
             if (!confirm('¿Seguro que deseas importar ' + count + ' pedido(s)?')) {
-                e.preventDefault();
-                return false;
+                return;
             }
 
-            // CRÍTICO: Establecer action con los filtros actuales en la URL
-            // Esto asegura que al recargar la página se mantengan los filtros
-            this.action = window.location.href.split('#')[0]; // URL completa sin hash
+            // ENVIAR VIA AJAX para asegurar que llegan los datos
+            console.log('Enviando vía AJAX...');
 
-            console.log('Form action establecido a:', this.action);
-            console.log('Form se va a enviar');
-
-            // Permitir el envío
-            return true;
+            $.ajax({
+                url: '{{ fsc.url() }}',
+                method: 'POST',
+                data: {
+                    action: 'import-selected',
+                    order_ids: selectedIds
+                },
+                success: function(response) {
+                    console.log('Respuesta recibida, recargando página...');
+                    // Recargar la página con los filtros actuales
+                    window.location.href = window.location.href.split('#')[0];
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error en AJAX:', error);
+                    alert('Error al importar pedidos. Revisa los logs.');
+                    window.location.reload();
+                }
+            });
         });
     }
 
