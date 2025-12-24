@@ -361,6 +361,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const formImportSelected = document.getElementById('formImportSelected');
     if (formImportSelected) {
         formImportSelected.addEventListener('submit', function(e) {
+            e.preventDefault(); // SIEMPRE prevenir submit por defecto
+
             const checkedBoxes = document.querySelectorAll('.order-checkbox:checked');
             const count = checkedBoxes.length;
 
@@ -369,18 +371,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (count === 0) {
                 alert('No hay pedidos seleccionados');
-                e.preventDefault();
                 return false;
             }
 
             if (!confirm('¿Seguro que deseas importar ' + count + ' pedido(s)?')) {
-                e.preventDefault();
                 return false;
             }
 
-            // CRÍTICO: Crear hidden inputs porque los checkboxes no se envían correctamente
-            // Primero eliminar hidden inputs previos si existen
-            const oldHiddens = this.querySelectorAll('input[name="order_ids_hidden[]"]');
+            // Eliminar hidden inputs previos si existen
+            const oldHiddens = this.querySelectorAll('input[name="order_ids[]"][type="hidden"]');
             oldHiddens.forEach(function(input) {
                 input.remove();
             });
@@ -402,10 +401,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             console.log('Form action:', this.action);
             console.log('Total hidden inputs añadidos:', checkedBoxes.length);
-            console.log('Enviando formulario...');
+            console.log('Haciendo submit programático...');
 
-            // Permitir submit
-            return true;
+            // Submit programático después de un pequeño delay
+            const form = this;
+            setTimeout(function() {
+                form.submit();
+            }, 100);
         });
     }
 
