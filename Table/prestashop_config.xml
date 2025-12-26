@@ -74,7 +74,6 @@
         <name>db_host</name>
         <type>character varying(255)</type>
         <null>YES</null>
-        <default>localhost</default>
     </column>
     <column>
         <name>db_name</name>
@@ -95,7 +94,6 @@
         <name>db_prefix</name>
         <type>character varying(20)</type>
         <null>YES</null>
-        <default>ps_</default>
     </column>
     <column>
         <name>use_db_for_ecotax</name>
