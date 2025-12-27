@@ -82,6 +82,18 @@ class ProductsPrestashop extends Controller
             case 'update-ventasinstock':
                 $this->updateVentaSinStockAction();
                 return; // No renderizar vista, solo devolver JSON
+
+            case 'update-products-stock':
+                $this->updateProductsStockAction();
+                return; // No renderizar vista, solo devolver JSON
+
+            case 'update-products-prices':
+                $this->updateProductsPricesAction();
+                return; // No renderizar vista, solo devolver JSON
+
+            case 'update-products-both':
+                $this->updateProductsBothAction();
+                return; // No renderizar vista, solo devolver JSON
         }
     }
 
@@ -190,13 +202,16 @@ class ProductsPrestashop extends Controller
             }
 
             $products = $data['products'];
+            $downloadImages = $data['download_images'] ?? true; // Por defecto descargar imágenes
 
             Tools::log()->info('========================================');
             Tools::log()->info('IMPORTANDO PRODUCTOS DESDE JAVASCRIPT');
             Tools::log()->info('Total productos a importar: ' . count($products));
+            Tools::log()->info('Descargar imágenes: ' . ($downloadImages ? 'SÍ' : 'NO'));
             Tools::log()->info('========================================');
 
             $downloader = new ProductsDownload();
+            $downloader->setDownloadImages($downloadImages);
             $importedCount = 0;
             $errorCount = 0;
             $errorReferences = []; // Referencias de productos con error
@@ -282,6 +297,180 @@ class ProductsPrestashop extends Controller
 
         } catch (\Exception $e) {
             Tools::log()->error('Error actualizando ventasinstock: ' . $e->getMessage());
+            $this->returnJson(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Actualiza solo el stock de productos seleccionados
+     */
+    private function updateProductsStockAction(): void
+    {
+        if (!$this->permissions->allowUpdate) {
+            $this->returnJson(['error' => 'Sin permisos']);
+            return;
+        }
+
+        try {
+            $jsonInput = file_get_contents('php://input');
+            $data = json_decode($jsonInput, true);
+
+            if (!isset($data['products']) || !is_array($data['products'])) {
+                $this->returnJson(['error' => 'Datos inválidos']);
+                return;
+            }
+
+            $products = $data['products'];
+
+            Tools::log()->info('========================================');
+            Tools::log()->info('ACTUALIZANDO SOLO STOCK');
+            Tools::log()->info('Total productos: ' . count($products));
+            Tools::log()->info('========================================');
+
+            $downloader = new ProductsDownload();
+            $updated = 0;
+            $errors = 0;
+
+            foreach ($products as $product) {
+                if (empty($product['reference'])) {
+                    $errors++;
+                    continue;
+                }
+
+                $result = $downloader->updateStockOnly($product);
+                if ($result) {
+                    $updated++;
+                } else {
+                    $errors++;
+                }
+            }
+
+            Tools::log()->info("Stock actualizado: {$updated} productos, {$errors} errores");
+
+            $this->returnJson([
+                'success' => true,
+                'updated' => $updated,
+                'errors' => $errors
+            ]);
+
+        } catch (\Exception $e) {
+            Tools::log()->error('Error actualizando stock: ' . $e->getMessage());
+            $this->returnJson(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Actualiza solo los precios de productos seleccionados
+     */
+    private function updateProductsPricesAction(): void
+    {
+        if (!$this->permissions->allowUpdate) {
+            $this->returnJson(['error' => 'Sin permisos']);
+            return;
+        }
+
+        try {
+            $jsonInput = file_get_contents('php://input');
+            $data = json_decode($jsonInput, true);
+
+            if (!isset($data['products']) || !is_array($data['products'])) {
+                $this->returnJson(['error' => 'Datos inválidos']);
+                return;
+            }
+
+            $products = $data['products'];
+
+            Tools::log()->info('========================================');
+            Tools::log()->info('ACTUALIZANDO SOLO PRECIOS');
+            Tools::log()->info('Total productos: ' . count($products));
+            Tools::log()->info('========================================');
+
+            $downloader = new ProductsDownload();
+            $updated = 0;
+            $errors = 0;
+
+            foreach ($products as $product) {
+                if (empty($product['reference'])) {
+                    $errors++;
+                    continue;
+                }
+
+                $result = $downloader->updatePricesOnly($product);
+                if ($result) {
+                    $updated++;
+                } else {
+                    $errors++;
+                }
+            }
+
+            Tools::log()->info("Precios actualizados: {$updated} productos, {$errors} errores");
+
+            $this->returnJson([
+                'success' => true,
+                'updated' => $updated,
+                'errors' => $errors
+            ]);
+
+        } catch (\Exception $e) {
+            Tools::log()->error('Error actualizando precios: ' . $e->getMessage());
+            $this->returnJson(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Actualiza stock y precios de productos seleccionados
+     */
+    private function updateProductsBothAction(): void
+    {
+        if (!$this->permissions->allowUpdate) {
+            $this->returnJson(['error' => 'Sin permisos']);
+            return;
+        }
+
+        try {
+            $jsonInput = file_get_contents('php://input');
+            $data = json_decode($jsonInput, true);
+
+            if (!isset($data['products']) || !is_array($data['products'])) {
+                $this->returnJson(['error' => 'Datos inválidos']);
+                return;
+            }
+
+            $products = $data['products'];
+
+            Tools::log()->info('========================================');
+            Tools::log()->info('ACTUALIZANDO STOCK Y PRECIOS');
+            Tools::log()->info('Total productos: ' . count($products));
+            Tools::log()->info('========================================');
+
+            $downloader = new ProductsDownload();
+            $updated = 0;
+            $errors = 0;
+
+            foreach ($products as $product) {
+                if (empty($product['reference'])) {
+                    $errors++;
+                    continue;
+                }
+
+                $result = $downloader->updateStockAndPrices($product);
+                if ($result) {
+                    $updated++;
+                } else {
+                    $errors++;
+                }
+            }
+
+            Tools::log()->info("Stock y precios actualizados: {$updated} productos, {$errors} errores");
+
+            $this->returnJson([
+                'success' => true,
+                'updated' => $updated,
+                'errors' => $errors
+            ]);
+
+        } catch (\Exception $e) {
+            Tools::log()->error('Error actualizando stock y precios: ' . $e->getMessage());
             $this->returnJson(['error' => $e->getMessage()]);
         }
     }
