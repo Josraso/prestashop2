@@ -275,6 +275,76 @@
                                     </div>
                                 </div>
 
+                                {# MAPEO DE ESTADOS A SERIES (OPCIONAL) #}
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">
+                                        Series por Estado
+                                        <small class="d-block text-muted">(opcional)</small>
+                                    </label>
+                                    <div class="col-sm-9">
+                                        <button type="button" class="btn btn-sm btn-info mb-2" data-toggle="collapse" data-target="#mapeoEstadosSeries">
+                                            <i class="fas fa-cog"></i> Configurar mapeo estado→serie
+                                        </button>
+
+                                        <div id="mapeoEstadosSeries" class="collapse mt-2">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle"></i>
+                                                <strong>Mapeo estado→serie:</strong> Asigna una serie diferente según el estado del pedido.
+                                                Si no se asigna una serie específica, se usará la <strong>serie por defecto</strong> configurada arriba.
+                                            </div>
+
+                                            {% set estadosActualesMapeo = fsc.config.getEstadosArray() %}
+                                            {% set estadosSeriesMapeo = fsc.config.getEstadosSeriesArray() %}
+
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th width="60%">Estado PrestaShop</th>
+                                                            <th width="40%">Serie</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for id, nombre in fsc.getEstadosPrestaShop() %}
+                                                            {% if id in estadosActualesMapeo %}
+                                                                <tr>
+                                                                    <td>
+                                                                        <strong>{{ nombre }}</strong>
+                                                                        <small class="text-muted d-block">Estado ID: {{ id }}</small>
+                                                                    </td>
+                                                                    <td>
+                                                                        <select name="estados_series[{{ id }}]" class="form-control form-control-sm">
+                                                                            <option value="">(usar serie por defecto)</option>
+                                                                            {% for serie in fsc.series %}
+                                                                                <option value="{{ serie.codserie }}"
+                                                                                        {% if estadosSeriesMapeo[id|string]|default('') == serie.codserie %}selected{% endif %}>
+                                                                                    {{ serie.descripcion }}
+                                                                                </option>
+                                                                            {% endfor %}
+                                                                        </select>
+                                                                    </td>
+                                                                </tr>
+                                                            {% endif %}
+                                                        {% endfor %}
+
+                                                        {% if estadosActualesMapeo is empty %}
+                                                            <tr>
+                                                                <td colspan="2" class="text-center text-muted">
+                                                                    <em>Primero debes seleccionar estados a importar arriba</em>
+                                                                </td>
+                                                            </tr>
+                                                        {% endif %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <small class="form-text text-muted">
+                                                💡 <strong>Ejemplo:</strong> Si el estado "Enviado" usa la serie "GENERAL" y "Pago en tienda" usa "VENFIS", cada pedido se creará con su serie correspondiente.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="form-group row">
                                     <label class="col-sm-3 col-form-label" for="import_since_id">
                                         Importar desde ID (cron)

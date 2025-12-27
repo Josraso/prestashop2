@@ -173,6 +173,10 @@ class ConfigPrestashop extends Controller
         $estadosSeleccionados = $this->request->request->all()['estados'] ?? [];
         $this->config->setEstadosArray($estadosSeleccionados);
 
+        // Guardar mapeo de estados→series (opcional)
+        $estadosSeries = $this->request->request->all()['estados_series'] ?? [];
+        $this->config->setEstadosSeriesArray($estadosSeries);
+
         if ($this->config->save()) {
             Tools::log()->info('Configuración guardada correctamente');
         } else {
