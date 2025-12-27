@@ -23,10 +23,21 @@ class ProductsDownload
     /** @var array Cache de tax rates para evitar peticiones repetidas */
     private $taxRateCache = [];
 
+    /** @var bool Control para descargar o no imágenes al importar productos existentes */
+    private $downloadImages = true;
+
     public function __construct()
     {
         $this->config = PrestashopConfig::getActive();
         $this->connection = new PrestashopConnection($this->config);
+    }
+
+    /**
+     * Establece si se deben descargar imágenes al importar/actualizar productos
+     */
+    public function setDownloadImages(bool $download): void
+    {
+        $this->downloadImages = $download;
     }
 
     /**
@@ -1251,9 +1262,9 @@ class ProductsDownload
                     return false;
                 }
 
-                // Descargar imagen PRIMERO
+                // Descargar imagen solo si está habilitado (para productos existentes)
                 $imageData = null;
-                if (!empty($productData['image_url'])) {
+                if ($this->downloadImages && !empty($productData['image_url'])) {
                     Tools::log()->info("Descargando imagen para actualizar: {$reference}");
                     $imageData = $this->downloadImage($productData['image_url'], $reference);
                     if ($imageData) {
@@ -1261,6 +1272,8 @@ class ProductsDownload
                     } else {
                         Tools::log()->warning("No se pudo descargar imagen");
                     }
+                } elseif (!$this->downloadImages) {
+                    Tools::log()->info("Descarga de imágenes deshabilitada - omitiendo imagen para: {$reference}");
                 }
 
                 // Actualizar datos del producto - CON REFERENCIA
@@ -1538,6 +1551,165 @@ class ProductsDownload
             Tools::log()->debug("No se pudo obtener tax rate para id_tax_rules_group {$idTaxRulesGroup}: " . $e->getMessage());
             $this->taxRateCache[$idTaxRulesGroup] = 21.0;
             return 21.0; // IVA por defecto
+        }
+    }
+
+    /**
+     * Actualiza SOLO el stock de un producto existente
+     * NO toca precios, imágenes ni otros campos
+     *
+     * @param array $productData Datos del producto (debe incluir reference y stock)
+     * @return bool
+     */
+    public function updateStockOnly(array $productData): bool
+    {
+        try {
+            $reference = $productData['reference'];
+            $stock = $productData['stock'] ?? 0;
+
+            Tools::log()->info("Actualizando SOLO stock: {$reference} → {$stock}");
+
+            // Buscar variante existente
+            $variante = new Variante();
+            if (!$variante->loadFromCode('', [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', $reference)])) {
+                Tools::log()->warning("Producto no existe, no se puede actualizar stock: {$reference}");
+                return false;
+            }
+
+            // Actualizar stock en variante
+            $variante->stockfis = $stock;
+
+            if (!$variante->save()) {
+                Tools::log()->error("Error actualizando stock de variante: {$reference}");
+                return false;
+            }
+
+            // Registrar stock en almacén
+            if (!$this->actualizarStockVariante($variante->idvariante, $stock, $reference)) {
+                Tools::log()->warning("No se pudo actualizar stock en almacén para: {$reference}");
+            }
+
+            Tools::log()->info("✓ Stock actualizado: {$reference} → {$stock}");
+            return true;
+
+        } catch (\Exception $e) {
+            Tools::log()->error("Error actualizando stock de {$productData['reference']}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza SOLO los precios de un producto existente
+     * NO toca stock, imágenes ni otros campos
+     *
+     * @param array $productData Datos del producto (debe incluir reference y price)
+     * @return bool
+     */
+    public function updatePricesOnly(array $productData): bool
+    {
+        try {
+            $reference = $productData['reference'];
+            $price = $productData['price'] ?? 0;
+
+            Tools::log()->info("Actualizando SOLO precio: {$reference} → {$price}");
+
+            // Buscar variante existente
+            $variante = new Variante();
+            if (!$variante->loadFromCode('', [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', $reference)])) {
+                Tools::log()->warning("Producto no existe, no se puede actualizar precio: {$reference}");
+                return false;
+            }
+
+            // Cargar el producto asociado
+            $producto = new Producto();
+            if (!$producto->loadFromCode($variante->idproducto)) {
+                Tools::log()->error("No se pudo cargar el producto con ID: {$variante->idproducto}");
+                return false;
+            }
+
+            // Actualizar precio en producto
+            $producto->precio = $price;
+
+            if (!$producto->save()) {
+                Tools::log()->error("Error actualizando precio de producto: {$reference}");
+                return false;
+            }
+
+            // Actualizar precio en variante
+            $variante->precio = $price;
+
+            if (!$variante->save()) {
+                Tools::log()->error("Error actualizando precio de variante: {$reference}");
+                return false;
+            }
+
+            Tools::log()->info("✓ Precio actualizado: {$reference} → {$price}");
+            return true;
+
+        } catch (\Exception $e) {
+            Tools::log()->error("Error actualizando precio de {$productData['reference']}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza stock Y precios de un producto existente
+     * NO toca imágenes ni otros campos
+     *
+     * @param array $productData Datos del producto (debe incluir reference, stock y price)
+     * @return bool
+     */
+    public function updateStockAndPrices(array $productData): bool
+    {
+        try {
+            $reference = $productData['reference'];
+            $stock = $productData['stock'] ?? 0;
+            $price = $productData['price'] ?? 0;
+
+            Tools::log()->info("Actualizando stock Y precio: {$reference} → Stock: {$stock}, Precio: {$price}");
+
+            // Buscar variante existente
+            $variante = new Variante();
+            if (!$variante->loadFromCode('', [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('referencia', $reference)])) {
+                Tools::log()->warning("Producto no existe, no se puede actualizar: {$reference}");
+                return false;
+            }
+
+            // Cargar el producto asociado
+            $producto = new Producto();
+            if (!$producto->loadFromCode($variante->idproducto)) {
+                Tools::log()->error("No se pudo cargar el producto con ID: {$variante->idproducto}");
+                return false;
+            }
+
+            // Actualizar precio en producto
+            $producto->precio = $price;
+
+            if (!$producto->save()) {
+                Tools::log()->error("Error actualizando producto: {$reference}");
+                return false;
+            }
+
+            // Actualizar stock y precio en variante
+            $variante->stockfis = $stock;
+            $variante->precio = $price;
+
+            if (!$variante->save()) {
+                Tools::log()->error("Error actualizando variante: {$reference}");
+                return false;
+            }
+
+            // Registrar stock en almacén
+            if (!$this->actualizarStockVariante($variante->idvariante, $stock, $reference)) {
+                Tools::log()->warning("No se pudo actualizar stock en almacén para: {$reference}");
+            }
+
+            Tools::log()->info("✓ Stock y precio actualizados: {$reference} → Stock: {$stock}, Precio: {$price}");
+            return true;
+
+        } catch (\Exception $e) {
+            Tools::log()->error("Error actualizando stock y precio de {$productData['reference']}: " . $e->getMessage());
+            return false;
         }
     }
 }
