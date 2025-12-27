@@ -211,6 +211,9 @@
 let allProducts = [];
 let selectedProducts = new Set();
 let importedProducts = new Set();
+let updatedStock = new Set();      // Productos con stock actualizado
+let updatedPrices = new Set();     // Productos con precios actualizados
+let updatedBoth = new Set();       // Productos con stock + precios actualizados
 let activeFilters = {
     imported: true,
     exists: true,
@@ -463,10 +466,19 @@ function renderTable() {
             visibleCount++;
         }
 
-        // Estado texto
+        // Estado texto - Prioridad: actualizaciones > importado > existe > nuevo
         let statusText = '';
         let statusBadge = '';
-        if (importedProducts.has(idx)) {
+        if (updatedBoth.has(idx)) {
+            statusText = 'Stock + Precio actualizados';
+            statusBadge = 'badge-success';
+        } else if (updatedStock.has(idx)) {
+            statusText = 'Stock actualizado';
+            statusBadge = 'badge-success';
+        } else if (updatedPrices.has(idx)) {
+            statusText = 'Precio actualizado';
+            statusBadge = 'badge-success';
+        } else if (importedProducts.has(idx)) {
             statusText = 'Importado';
             statusBadge = 'badge-primary';
         } else if (p.exists) {
@@ -664,6 +676,17 @@ async function updateProducts(mode) {
         if (!data.success) {
             throw new Error(data.error || 'Error actualizando productos');
         }
+
+        // Marcar productos como actualizados según el modo
+        Array.from(selectedProducts).forEach(idx => {
+            if (mode === 'stock') {
+                updatedStock.add(idx);
+            } else if (mode === 'prices') {
+                updatedPrices.add(idx);
+            } else if (mode === 'both') {
+                updatedBoth.add(idx);
+            }
+        });
 
         // Limpiar selección
         selectedProducts.clear();
