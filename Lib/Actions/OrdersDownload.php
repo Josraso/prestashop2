@@ -313,7 +313,10 @@ class OrdersDownload
         // setSubject() ya copia regimeniva del cliente al albarán automáticamente
 
         $albaran->codalmacen = $this->config->codalmacen;
-        $albaran->codserie = $this->config->codserie;
+
+        // Obtener serie según el estado del pedido (si está mapeado)
+        $currentState = (int)$orderXml->current_state;
+        $albaran->codserie = $this->config->getSerieForEstado($currentState);
 
         // IMPORTANTE: Usar la fecha del ÚLTIMO estado del pedido, no la fecha de creación
         $lastStatusDate = $this->getLastOrderStatusDate($orderXml, $orderId);
