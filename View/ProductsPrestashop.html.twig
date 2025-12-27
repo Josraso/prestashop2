@@ -17,6 +17,24 @@
                     <button id="btnImport" class="btn btn-success" disabled>
                         <i class="fas fa-file-import"></i> Importar Seleccionados
                     </button>
+
+                    <div class="custom-control custom-checkbox d-inline-block ml-2 mr-3" style="vertical-align: middle;">
+                        <input type="checkbox" class="custom-control-input" id="chkDownloadImages" checked>
+                        <label class="custom-control-label" for="chkDownloadImages">
+                            <i class="fas fa-image"></i> Descargar imágenes
+                        </label>
+                    </div>
+
+                    <button id="btnUpdateStock" class="btn btn-warning" disabled>
+                        <i class="fas fa-boxes"></i> Actualizar Stock
+                    </button>
+                    <button id="btnUpdatePrices" class="btn btn-warning" disabled>
+                        <i class="fas fa-tag"></i> Actualizar Precios
+                    </button>
+                    <button id="btnUpdateBoth" class="btn btn-warning" disabled>
+                        <i class="fas fa-sync-alt"></i> Stock + Precios
+                    </button>
+
                     <button id="btnUpdateVentaSinStock" class="btn btn-info">
                         <i class="fas fa-check-circle"></i> Actualizar Venta sin Stock
                     </button>
@@ -228,6 +246,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (confirm('¿Seguro que quieres limpiar la tabla de productos?')) {
             clearProducts();
         }
+    });
+
+    // Eventos: Nuevos botones de actualización
+    document.getElementById('btnUpdateStock').addEventListener('click', function() {
+        updateProducts('stock');
+    });
+
+    document.getElementById('btnUpdatePrices').addEventListener('click', function() {
+        updateProducts('prices');
+    });
+
+    document.getElementById('btnUpdateBoth').addEventListener('click', function() {
+        updateProducts('both');
     });
 
     // Evento: Seleccionar todos (solo visibles, límite configurable)
@@ -502,7 +533,16 @@ function updateSelectedBadge() {
 
 function updateImportButton() {
     const btnImport = document.getElementById('btnImport');
-    btnImport.disabled = selectedProducts.size === 0;
+    const btnUpdateStock = document.getElementById('btnUpdateStock');
+    const btnUpdatePrices = document.getElementById('btnUpdatePrices');
+    const btnUpdateBoth = document.getElementById('btnUpdateBoth');
+
+    const hasSelection = selectedProducts.size > 0;
+
+    btnImport.disabled = !hasSelection;
+    btnUpdateStock.disabled = !hasSelection;
+    btnUpdatePrices.disabled = !hasSelection;
+    btnUpdateBoth.disabled = !hasSelection;
 }
 
 async function importSelectedProducts() {
@@ -523,6 +563,9 @@ async function importSelectedProducts() {
         // Obtener productos seleccionados
         const productsToImport = Array.from(selectedProducts).map(idx => allProducts[idx]);
 
+        // Obtener estado del checkbox de imágenes
+        const downloadImages = document.getElementById('chkDownloadImages').checked;
+
         const response = await fetch('ProductsPrestashop', {
             method: 'POST',
             headers: {
@@ -530,7 +573,8 @@ async function importSelectedProducts() {
             },
             body: JSON.stringify({
                 action: 'import-products-json',
-                products: productsToImport
+                products: productsToImport,
+                download_images: downloadImages
             })
         });
 
@@ -569,6 +613,76 @@ async function importSelectedProducts() {
     } finally {
         btnImport.disabled = false;
         btnImport.innerHTML = '<i class="fas fa-file-import"></i> Importar Seleccionados';
+    }
+}
+
+async function updateProducts(mode) {
+    if (selectedProducts.size === 0) {
+        alert('No hay productos seleccionados');
+        return;
+    }
+
+    const modeLabels = {
+        'stock': 'stock',
+        'prices': 'precios',
+        'both': 'stock y precios'
+    };
+
+    if (!confirm('¿Actualizar ' + modeLabels[mode] + ' de ' + selectedProducts.size + ' productos?')) {
+        return;
+    }
+
+    // Identificar el botón correcto
+    let btnUpdate;
+    const btnIds = {
+        'stock': 'btnUpdateStock',
+        'prices': 'btnUpdatePrices',
+        'both': 'btnUpdateBoth'
+    };
+    btnUpdate = document.getElementById(btnIds[mode]);
+
+    const originalHTML = btnUpdate.innerHTML;
+    btnUpdate.disabled = true;
+    btnUpdate.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
+
+    try {
+        // Obtener productos seleccionados
+        const productsToUpdate = Array.from(selectedProducts).map(idx => allProducts[idx]);
+
+        const response = await fetch('ProductsPrestashop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'update-products-' + mode,
+                products: productsToUpdate
+            })
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Error actualizando productos');
+        }
+
+        // Limpiar selección
+        selectedProducts.clear();
+        document.getElementById('selectAll').checked = false;
+
+        // Re-renderizar tabla
+        renderTable();
+
+        let resultMsg = '✓ Actualización completada\n';
+        resultMsg += 'Actualizados: ' + data.updated + '\n';
+        resultMsg += 'Errores: ' + data.errors;
+
+        alert(resultMsg);
+
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        btnUpdate.disabled = false;
+        btnUpdate.innerHTML = originalHTML;
     }
 }
 
