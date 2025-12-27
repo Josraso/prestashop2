@@ -8,6 +8,8 @@
                 <i class="fas fa-box-open"></i> Productos PrestaShop
             </h1>
 
+            {# Sección sticky de controles #}
+            <div class="sticky-controls">
             {# Botones de acción #}
             <div class="card mb-3">
                 <div class="card-body">
@@ -70,7 +72,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="custom-control custom-checkbox">
                                 <input type="checkbox" class="custom-control-input filter-checkbox" id="filterImported" value="imported" checked>
                                 <label class="custom-control-label" for="filterImported">
@@ -78,7 +80,31 @@
                                 </label>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input filter-checkbox" id="filterUpdatedStock" value="updatedStock" checked>
+                                <label class="custom-control-label" for="filterUpdatedStock">
+                                    <span class="badge badge-success">Stock ✓</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input filter-checkbox" id="filterUpdatedPrices" value="updatedPrices" checked>
+                                <label class="custom-control-label" for="filterUpdatedPrices">
+                                    <span class="badge badge-success">Precio ✓</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input filter-checkbox" id="filterUpdatedBoth" value="updatedBoth" checked>
+                                <label class="custom-control-label" for="filterUpdatedBoth">
+                                    <span class="badge badge-success">Ambos ✓</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
                             <div class="custom-control custom-checkbox">
                                 <input type="checkbox" class="custom-control-input filter-checkbox" id="filterExists" value="exists" checked>
                                 <label class="custom-control-label" for="filterExists">
@@ -86,7 +112,7 @@
                                 </label>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="custom-control custom-checkbox">
                                 <input type="checkbox" class="custom-control-input filter-checkbox" id="filterNew" value="new" checked>
                                 <label class="custom-control-label" for="filterNew">
@@ -94,7 +120,9 @@
                                 </label>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-12 text-center">
                             <button id="btnSelectAllFilters" class="btn btn-sm btn-outline-primary mr-2">
                                 <i class="fas fa-check-double"></i> Todos
                             </button>
@@ -105,6 +133,8 @@
                     </div>
                 </div>
             </div>
+            </div>
+            {# Fin sección sticky #}
 
             {# Barra de progreso #}
             <div id="progressContainer" class="card mb-3" style="display: none;">
@@ -121,9 +151,9 @@
 
             {# Tabla de productos #}
             <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm" id="productsTable">
+                <div class="card-body p-0">
+                    <div class="table-scroll-container">
+                        <table class="table table-hover table-sm mb-0" id="productsTable">
                             <thead>
                                 <tr>
                                     <th>
@@ -149,6 +179,7 @@
                             </tbody>
                         </table>
                     </div>
+                    {# Fin table-scroll-container #}
                 </div>
             </div>
         </div>
@@ -156,6 +187,32 @@
 </div>
 
 <style>
+    /* Sticky controls - quedan fijos al hacer scroll */
+    .sticky-controls {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background-color: #f8f9fa;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    /* Tabla con scroll independiente */
+    .table-scroll-container {
+        max-height: calc(100vh - 450px);
+        overflow-y: auto;
+        overflow-x: auto;
+    }
+
+    /* Header de tabla sticky dentro de su contenedor */
+    #productsTable thead th {
+        position: sticky;
+        top: 0;
+        background-color: #fff;
+        z-index: 10;
+        box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
+    }
+
     .product-exists {
         background-color: #d4edda !important;
     }
@@ -216,6 +273,9 @@ let updatedPrices = new Set();     // Productos con precios actualizados
 let updatedBoth = new Set();       // Productos con stock + precios actualizados
 let activeFilters = {
     imported: true,
+    updatedStock: true,
+    updatedPrices: true,
+    updatedBoth: true,
     exists: true,
     new: true
 };
@@ -447,7 +507,17 @@ function renderTable() {
         let rowClass = '';
         let productType = '';
 
-        if (importedProducts.has(idx)) {
+        // Prioridad: actualizaciones > importado > existe > nuevo
+        if (updatedBoth.has(idx)) {
+            rowClass = 'product-imported';
+            productType = 'updatedBoth';
+        } else if (updatedStock.has(idx)) {
+            rowClass = 'product-imported';
+            productType = 'updatedStock';
+        } else if (updatedPrices.has(idx)) {
+            rowClass = 'product-imported';
+            productType = 'updatedPrices';
+        } else if (importedProducts.has(idx)) {
             rowClass = 'product-imported';
             productType = 'imported';
         } else if (p.exists) {
