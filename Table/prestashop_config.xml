@@ -101,6 +101,11 @@
         <null>NO</null>
         <default>false</default>
     </column>
+    <column>
+        <name>estados_series</name>
+        <type>text</type>
+        <null>YES</null>
+    </column>
     <constraint>
         <name>prestashop_config_pkey</name>
         <type>PRIMARY KEY (id)</type>
