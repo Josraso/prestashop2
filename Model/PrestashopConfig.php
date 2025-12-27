@@ -70,6 +70,9 @@ class PrestashopConfig extends ModelClass
     /** @var bool */
     public $use_db_for_ecotax;
 
+    /** @var string Mapeo JSON de estados a series. Ej: {"2":"GENERAL","5":"VENFIS"} */
+    public $estados_series;
+
     public static function primaryColumn(): string
     {
         return 'id';
@@ -99,6 +102,9 @@ class PrestashopConfig extends ModelClass
         $this->db_password = '';
         $this->db_prefix = 'ps_';
         $this->use_db_for_ecotax = false; // Por defecto desactivado
+
+        // Mapeo de estados a series (JSON)
+        $this->estados_series = ''; // Por defecto vacío, usa codserie
     }
 
     /**
@@ -137,6 +143,58 @@ class PrestashopConfig extends ModelClass
     public function setEstadosArray(array $estados): void
     {
         $this->estados_importar = json_encode($estados);
+    }
+
+    /**
+     * Obtiene la serie a usar para un estado específico
+     * Si el estado tiene una serie asignada, la devuelve
+     * Si no, devuelve la serie por defecto (codserie)
+     */
+    public function getSerieForEstado(int $estadoId): string
+    {
+        // Si hay mapeo específico, buscarlo
+        if (!empty($this->estados_series)) {
+            $map = json_decode($this->estados_series, true);
+            if (is_array($map) && isset($map[(string)$estadoId])) {
+                $serie = trim($map[(string)$estadoId]);
+                // Si la serie no está vacía, usarla
+                if (!empty($serie)) {
+                    return $serie;
+                }
+            }
+        }
+
+        // Fallback a serie por defecto
+        return $this->codserie ?? '';
+    }
+
+    /**
+     * Obtiene el mapeo de estados a series como array
+     */
+    public function getEstadosSeriesArray(): array
+    {
+        if (empty($this->estados_series)) {
+            return [];
+        }
+
+        $map = json_decode($this->estados_series, true);
+        return is_array($map) ? $map : [];
+    }
+
+    /**
+     * Establece el mapeo de estados a series desde un array
+     */
+    public function setEstadosSeriesArray(array $mapeo): void
+    {
+        // Limpiar entradas vacías
+        $cleaned = [];
+        foreach ($mapeo as $estado => $serie) {
+            if (!empty(trim($serie))) {
+                $cleaned[(string)$estado] = trim($serie);
+            }
+        }
+
+        $this->estados_series = empty($cleaned) ? '' : json_encode($cleaned);
     }
 
     /**
