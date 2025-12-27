@@ -317,7 +317,7 @@
                                                                             <option value="">(usar serie por defecto)</option>
                                                                             {% for serie in fsc.series %}
                                                                                 <option value="{{ serie.codserie }}"
-                                                                                        {% if estadosSeriesMapeo[id|string]|default('') == serie.codserie %}selected{% endif %}>
+                                                                                        {% if estadosSeriesMapeo[id ~ '']|default('') == serie.codserie %}selected{% endif %}>
                                                                                     {{ serie.descripcion }}
                                                                                 </option>
                                                                             {% endfor %}
