@@ -199,13 +199,23 @@ class PrestashopConfig extends ModelClass
 
     /**
      * Obtiene la configuración activa
+     * IMPORTANTE: Siempre devuelve el PRIMER registro (menor ID)
+     * El campo 'activo' solo controla el CRON, no qué registro usar
      */
     public static function getActive(): ?self
     {
         $config = new self();
-        $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('activo', true)];
 
-        if ($config->loadFromCode('', $where)) {
+        // Cargar el registro con menor ID (el primero/único)
+        $db = new \FacturaScripts\Core\Base\DataBase();
+        $tableName = self::tableName();
+
+        // Buscar el registro con menor ID
+        $sql = "SELECT * FROM {$tableName} ORDER BY id ASC LIMIT 1";
+        $data = $db->select($sql);
+
+        if (!empty($data)) {
+            $config->loadFromData($data[0]);
             return $config;
         }
 
