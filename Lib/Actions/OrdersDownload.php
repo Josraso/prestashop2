@@ -435,6 +435,7 @@ class OrdersDownload
                 $productId = (int)$row->product_id;
 
                 // ECOTASA: Leer desde el array precargado
+                $ecotaxTaxExcl = 0.0;
                 $ecotaxTaxIncl = 0.0;
                 $ecotaxTaxRate = 21.0;
 
@@ -442,15 +443,14 @@ class OrdersDownload
                     $ecotaxValue = $ecotaxData[$productId];
 
                     if ($ecotaxValue > 0) {
-                        $ecotaxTaxIncl = $ecotaxValue;
-                        Tools::log()->info("✓ ECOTAX detectada en producto {$productId}: {$ecotaxTaxIncl}€ (con IVA)");
-                    }
-                }
+                        // IMPORTANTE: PrestaShop guarda ecotax en BD SIN IVA
+                        $ecotaxTaxExcl = $ecotaxValue;
 
-                // Calcular ecotax sin IVA (PrestaShop lo trae CON IVA)
-                $ecotaxTaxExcl = 0.0;
-                if ($ecotaxTaxIncl > 0 && $ecotaxTaxRate > 0) {
-                    $ecotaxTaxExcl = $ecotaxTaxIncl / (1 + ($ecotaxTaxRate / 100));
+                        // Calcular ecotax CON IVA multiplicando
+                        $ecotaxTaxIncl = $ecotaxTaxExcl * (1 + ($ecotaxTaxRate / 100));
+
+                        Tools::log()->info("✓ ECOTAX detectada en producto {$productId}: {$ecotaxTaxExcl}€ (sin IVA) → {$ecotaxTaxIncl}€ (con IVA)");
+                    }
                 }
 
                 // IMPORTANTE: PrestaShop SUMA la ecotasa al precio del producto
