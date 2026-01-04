@@ -151,11 +151,20 @@ class ConfigPrestashop extends Controller
             return;
         }
 
+        // IMPORTANTE: Antes de guardar, desactivar TODOS los demás registros
+        // para asegurar que solo haya UNO activo
+        $db = new \FacturaScripts\Core\Base\DataBase();
+        $db->exec("UPDATE " . PrestashopConfig::tableName() . " SET activo = false WHERE id != " . ($this->config->id ?? 0));
+
         $this->config->shop_url = $this->request->request->get('shop_url', '');
         $this->config->api_key = $this->request->request->get('api_key', '');
         $this->config->codalmacen = $this->request->request->get('codalmacen', '');
         $this->config->codserie = $this->request->request->get('codserie', '');
-        $this->config->activo = (bool)$this->request->request->get('activo', false);
+
+        // IMPORTANTE: SIEMPRE marcar como activo el registro principal
+        // El checkbox "activo" del formulario ya no controla esto
+        $this->config->activo = true;
+
         $this->config->use_ws_key_param = (bool)$this->request->request->get('use_ws_key_param', false);
         $this->config->import_since_id = (int)$this->request->request->get('import_since_id', 0);
         $this->config->import_since_date = $this->request->request->get('import_since_date', '');
