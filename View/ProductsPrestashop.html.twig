@@ -122,6 +122,25 @@
                         </div>
                     </div>
                     <div class="row mt-2">
+                        <div class="col-md-2">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input filter-checkbox" id="filterActive" value="active" checked>
+                                <label class="custom-control-label" for="filterActive">
+                                    <span class="badge badge-success"><i class="fas fa-check-circle"></i> Activos</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input filter-checkbox" id="filterInactive" value="inactive" checked>
+                                <label class="custom-control-label" for="filterInactive">
+                                    <span class="badge badge-secondary"><i class="fas fa-times-circle"></i> Inactivos</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-8"></div>
+                    </div>
+                    <div class="row mt-2">
                         <div class="col-md-12 text-center">
                             <button id="btnSelectAllFilters" class="btn btn-sm btn-outline-primary mr-2">
                                 <i class="fas fa-check-double"></i> Todos
@@ -277,7 +296,9 @@ let activeFilters = {
     updatedPrices: true,
     updatedBoth: true,
     exists: true,
-    new: true
+    new: true,
+    active: true,
+    inactive: true
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -528,8 +549,15 @@ function renderTable() {
             productType = 'new';
         }
 
-        // Aplicar filtro: si el tipo de producto no está activo, ocultar fila
-        const isVisible = activeFilters[productType];
+        // Aplicar filtro: tipo de producto + activo/inactivo
+        const typeVisible = activeFilters[productType];
+
+        // Filtro adicional por activo/inactivo
+        const activeStatusType = p.active ? 'active' : 'inactive';
+        const activeVisible = activeFilters[activeStatusType];
+
+        // Producto visible solo si ambos filtros pasan
+        const isVisible = typeVisible && activeVisible;
         const displayStyle = isVisible ? '' : 'display: none;';
 
         if (isVisible) {

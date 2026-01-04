@@ -1349,10 +1349,13 @@ class ProductsDownload
                 // ========== CREAR NUEVO PRODUCTO ==========
                 Tools::log()->critical(">>> INICIANDO CREACIÓN DE PRODUCTO: {$reference}");
 
-                // 1. Descargar imagen PRIMERO
+                // 1. Descargar imagen PRIMERO (solo si está habilitado)
                 $imageData = null;
-                if (!empty($productData['image_url'])) {
+                if ($this->downloadImages && !empty($productData['image_url'])) {
+                    Tools::log()->info("Descargando imagen para nuevo producto: {$reference}");
                     $imageData = $this->downloadImage($productData['image_url'], $reference);
+                } elseif (!$this->downloadImages) {
+                    Tools::log()->info("Descarga de imágenes deshabilitada - omitiendo imagen para nuevo producto: {$reference}");
                 }
 
                 // 2. Crear Producto CON REFERENCIA (necesaria para buscadores)
