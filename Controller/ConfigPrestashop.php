@@ -108,6 +108,10 @@ class ConfigPrestashop extends Controller
             case 'test-webhook':
                 $this->testWebhookAction();
                 break;
+
+            case 'fix-ecotax':
+                $this->fixEcotaxAction();
+                break;
         }
     }
 
@@ -669,6 +673,73 @@ class ConfigPrestashop extends Controller
         } catch (\Exception $e) {
             Tools::log()->warning('No se pudieron cargar idiomas de PrestaShop: ' . $e->getMessage());
             $this->idiomasPrestaShop = [];
+        }
+    }
+
+    /**
+     * Corrige codimpuesto="ECOTASA" a "IVA21" en facturas ya generadas
+     */
+    private function fixEcotaxAction(): void
+    {
+        if (!$this->permissions->allowUpdate) {
+            Tools::log()->warning('No tienes permisos para ejecutar esta corrección');
+            return;
+        }
+
+        $db = new \FacturaScripts\Core\Base\DataBase();
+
+        // 1. Verificar cuántas líneas tienen el problema
+        $sqlCount = "SELECT COUNT(*) as total FROM lineasivafactcli WHERE codimpuesto = 'ECOTASA'";
+        $result = $db->select($sqlCount);
+        $totalAfectadas = $result[0]['total'] ?? 0;
+
+        if ($totalAfectadas == 0) {
+            Tools::log()->info('✓ No hay líneas con codimpuesto=ECOTASA. Todo está correcto.');
+            $this->importResult = '<div class="alert alert-success">' .
+                '<i class="fas fa-check-circle"></i> <strong>No hay líneas que corregir</strong><br>' .
+                'Todas las líneas de IVA tienen el codimpuesto correcto.' .
+                '</div>';
+            return;
+        }
+
+        // 2. Mostrar facturas afectadas
+        $sqlFacturas = "SELECT DISTINCT idfactura FROM lineasivafactcli WHERE codimpuesto = 'ECOTASA'";
+        $facturas = $db->select($sqlFacturas);
+        $facturasIds = array_column($facturas, 'idfactura');
+
+        Tools::log()->info("Encontradas {$totalAfectadas} líneas con codimpuesto=ECOTASA en " . count($facturasIds) . " facturas");
+
+        // 3. Actualizar todas las líneas con codimpuesto='ECOTASA' a 'IVA21'
+        $sqlUpdate = "UPDATE lineasivafactcli SET codimpuesto = 'IVA21' WHERE codimpuesto = 'ECOTASA'";
+
+        if ($db->exec($sqlUpdate)) {
+            Tools::log()->info("✓ Se corrigieron {$totalAfectadas} líneas de IVA en " . count($facturasIds) . " facturas");
+
+            // 4. Verificar que no queden líneas con ECOTASA
+            $resultVerify = $db->select($sqlCount);
+            $quedanAfectadas = $resultVerify[0]['total'] ?? 0;
+
+            if ($quedanAfectadas == 0) {
+                $this->importResult = '<div class="alert alert-success">' .
+                    '<i class="fas fa-check-circle"></i> <strong>Corrección completada exitosamente</strong><br>' .
+                    'Se corrigieron <strong>' . $totalAfectadas . ' líneas de IVA</strong> en <strong>' . count($facturasIds) . ' facturas</strong>.<br><br>' .
+                    '<strong>Facturas afectadas:</strong> ' . implode(', ', array_slice($facturasIds, 0, 20)) .
+                    (count($facturasIds) > 20 ? '... (y ' . (count($facturasIds) - 20) . ' más)' : '') . '<br><br>' .
+                    '<small class="text-muted">Si ya enviaste estas facturas a VeriFactu con error, puede que necesites reenviarlas.</small>' .
+                    '</div>';
+            } else {
+                Tools::log()->warning("Todavía quedan {$quedanAfectadas} líneas sin corregir");
+                $this->importResult = '<div class="alert alert-warning">' .
+                    '<i class="fas fa-exclamation-triangle"></i> <strong>Corrección parcial</strong><br>' .
+                    'Se corrigieron algunas líneas pero todavía quedan ' . $quedanAfectadas . ' sin corregir.' .
+                    '</div>';
+            }
+        } else {
+            Tools::log()->error('Error al actualizar las líneas: ' . $db->getErrorMessage());
+            $this->importResult = '<div class="alert alert-danger">' .
+                '<i class="fas fa-times-circle"></i> <strong>Error al corregir las líneas</strong><br>' .
+                htmlspecialchars($db->getErrorMessage()) .
+                '</div>';
         }
     }
 }

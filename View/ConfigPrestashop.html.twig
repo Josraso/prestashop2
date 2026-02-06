@@ -763,6 +763,50 @@
                             </form>
                         </div>
                     </div>
+
+                    {# Corrección de datos históricos ECOTAX #}
+                    <div class="card shadow mb-4 border-warning">
+                        <div class="card-header py-3 bg-warning">
+                            <h6 class="m-0 font-weight-bold text-white">
+                                <i class="fas fa-wrench"></i> Corregir Datos Históricos - ECOTAX
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">
+                                <i class="fas fa-info-circle"></i> <strong>¿Para qué sirve esto?</strong><br>
+                                Si tienes facturas que fueron generadas antes del fix de ECOTAX, es posible que tengan
+                                líneas de IVA con <code>codimpuesto="ECOTASA"</code> que no existe en el sistema.<br>
+                                Esto causa el error VeriFactu: <em>"El campo desgloses no puede estar vacío"</em>.
+                            </p>
+
+                            <div class="alert alert-warning mb-3">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Esta herramienta corrige automáticamente:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li>Todas las líneas de IVA en facturas que tengan <code>codimpuesto="ECOTASA"</code></li>
+                                    <li>Las cambia a <code>codimpuesto="IVA21"</code> que es el código correcto</li>
+                                    <li>Permite que VeriFactu procese correctamente las facturas</li>
+                                </ul>
+                            </div>
+
+                            <form action="{{ fsc.url() }}?tab=import" method="post" class="form">
+                                <input type="hidden" name="action" value="fix-ecotax"/>
+                                {{ formToken() }}
+
+                                <div class="text-center">
+                                    <button type="submit" class="btn btn-warning btn-lg" onclick="return confirm('¿Estás seguro de que deseas corregir todas las líneas con codimpuesto=ECOTASA? Esta acción modificará la base de datos.')">
+                                        <i class="fas fa-wrench"></i> Corregir Líneas ECOTASA
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-lightbulb"></i>
+                                <strong>Nota:</strong> Solo necesitas ejecutar esto UNA VEZ para corregir facturas antiguas.
+                                Las nuevas importaciones ya no tendrán este problema gracias al fix implementado.
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {# ============================================ #}
