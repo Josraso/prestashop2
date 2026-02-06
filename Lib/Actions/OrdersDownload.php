@@ -1559,8 +1559,24 @@ class OrdersDownload
             throw new \Exception($error);
         }
 
+        // CRÍTICO: Verificar y corregir codimpuesto del producto ECOTAX
+        // El producto debe tener codimpuesto = "IVA21", no "ECOTASA"
+        // Si tiene "ECOTASA", causa error VeriFactu: "El campo desgloses no puede estar vacío"
+        if ($variante->codimpuesto !== 'IVA21') {
+            $oldCodimpuesto = $variante->codimpuesto;
+            $variante->codimpuesto = 'IVA21';
+
+            if ($variante->save()) {
+                Tools::log()->warning("⚠ Producto ECOTAX tenía codimpuesto='{$oldCodimpuesto}' - corregido a 'IVA21'");
+            } else {
+                $error = "⚠ CRÍTICO: No se pudo actualizar codimpuesto del producto ECOTAX a IVA21";
+                Tools::log()->critical($error);
+                throw new \Exception($error);
+            }
+        }
+
         $verified = true;
-        Tools::log()->info("✓ Producto ECOTAX verificado");
+        Tools::log()->info("✓ Producto ECOTAX verificado con codimpuesto=IVA21");
     }
 
     /**
