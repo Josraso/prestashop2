@@ -301,7 +301,7 @@ class ListPedidosPrestashop extends Controller
             foreach ($ordersXml as $orderXml) {
                 $orderId = (int)$orderXml->id;
                 $orderRef = (string)$orderXml->reference;
-                $orderDate = (string)$orderXml->date_add;
+                $orderDate = (string)$orderXml->date_upd; // fecha última modificación (cambia al cambiar estado)
                 $orderState = (int)$orderXml->current_state;
 
                 // Aplicar filtro "ID hasta"
@@ -396,7 +396,7 @@ class ListPedidosPrestashop extends Controller
                 $customerId = (int)$orderXml->id_customer;
                 $currentState = (int)$orderXml->current_state;
                 $totalPaid = (float)$orderXml->total_paid;
-                $dateAdd = (string)$orderXml->date_add;
+                $dateAdd = (string)$orderXml->date_upd; // fecha última modificación (cambia al cambiar estado)
 
                 // Obtener nombre del cliente
                 $customerName = $this->getCustomerName($connection, $customerId);
