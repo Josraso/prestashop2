@@ -1685,60 +1685,38 @@ class OrdersDownload
     private function getLastOrderStatusDate(\SimpleXMLElement $orderXml, int $orderId): ?string
     {
         try {
-            // Intentar 1: order_state_histories (plural) en associations del XML
-            if (isset($orderXml->associations->order_state_histories->order_state_history)) {
-                $histories = $orderXml->associations->order_state_histories->order_state_history;
-
+            // Intentar 1: associations->order_histories->order_history en el XML del pedido.
+            // La API con display=full incluye las asociaciones pero solo con IDs (sin date_add),
+            // así que este intento solo funciona si PrestaShop devuelve el campo date_add aquí.
+            if (isset($orderXml->associations->order_histories->order_history)) {
                 $historyArray = [];
-                foreach ($histories as $history) {
-                    $historyArray[] = [
-                        'date' => (string)$history->date_add,
-                        'id_order_state' => (int)$history->id_order_state
-                    ];
+                foreach ($orderXml->associations->order_histories->order_history as $history) {
+                    $date = (string)$history->date_add;
+                    if (!empty($date)) {
+                        $historyArray[] = $date;
+                    }
                 }
-
                 if (!empty($historyArray)) {
-                    usort($historyArray, function($a, $b) {
-                        return strtotime($b['date']) - strtotime($a['date']);
-                    });
-
-                    return $historyArray[0]['date'];
+                    rsort($historyArray); // más reciente primero
+                    Tools::log()->info("Fecha último estado (XML associations): {$historyArray[0]}");
+                    return $historyArray[0];
                 }
             }
 
-            // Intentar 2: order_history (singular) en associations del XML
-            if (isset($orderXml->associations->order_history)) {
-                $histories = $orderXml->associations->order_history;
-
-                $historyArray = [];
-                foreach ($histories as $history) {
-                    $historyArray[] = [
-                        'date' => (string)$history->date_add,
-                        'id_order_state' => (int)$history->id_order_state
-                    ];
-                }
-
-                if (!empty($historyArray)) {
-                    usort($historyArray, function($a, $b) {
-                        return strtotime($b['date']) - strtotime($a['date']);
-                    });
-
-                    return $historyArray[0]['date'];
-                }
-            }
-
-            // Intentar 3: Desde API order_histories
+            // Intentar 2: llamada directa a la API order_histories.
+            // getOrderHistory() ya devuelve los resultados ordenados por ID DESC en PHP,
+            // así que $history[0] es SIEMPRE el estado más reciente.
             $history = $this->connection->getOrderHistory($orderId);
 
             if (!empty($history)) {
-                $lastStatus = $history[0];
-                $dateAdd = (string)$lastStatus->date_add;
-
+                $dateAdd = (string)$history[0]->date_add;
                 if (!empty($dateAdd)) {
+                    Tools::log()->info("Fecha último estado (API order_histories): {$dateAdd}");
                     return $dateAdd;
                 }
             }
 
+            Tools::log()->warning("Pedido {$orderId}: no se encontró fecha de último estado en ninguna fuente");
             return null;
         } catch (\Exception $e) {
             Tools::log()->error("Error obteniendo fecha del último estado: " . $e->getMessage());

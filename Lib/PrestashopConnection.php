@@ -519,6 +519,15 @@ class PrestashopConnection
                 }
             }
 
+            // Ordenar en PHP por ID descendente: no confiar en que la API respete el sort.
+            // Así $history[0] es SIEMPRE el estado más reciente, independientemente
+            // de la versión de PrestaShop o del comportamiento del webservice.
+            if (count($history) > 1) {
+                usort($history, function($a, $b) {
+                    return (int)$b->id - (int)$a->id;
+                });
+            }
+
             return $history;
         } catch (\Exception $e) {
             return [];
