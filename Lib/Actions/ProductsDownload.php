@@ -114,6 +114,7 @@ class ProductsDownload
                 $productName = $this->extractMultilangField($product->name);
                 $productReference = (string)$product->reference;
                 $productPrice = (float)$product->price;
+                $productWholesalePrice = (float)$product->wholesale_price;
                 $productActive = (int)$product->active === 1;
                 $imageUrl = $this->getProductImageUrl($productId, (int)$product->id_default_image);
 
@@ -141,6 +142,7 @@ class ProductsDownload
                         'reference' => $ref,
                         'name' => $productName,
                         'price' => round($productPrice, 2),
+                        'wholesale_price' => round($productWholesalePrice, 4),
                         'stock' => $stock,
                         'active' => $productActive,
                         'image_url' => $imageUrl,
@@ -181,6 +183,7 @@ class ProductsDownload
                             'reference' => $ref,
                             'name' => $combinedName,
                             'price' => round($finalPrice, 2),
+                            'wholesale_price' => round($productWholesalePrice, 4),
                             'stock' => $comboStock,
                             'active' => $productActive,
                             'image_url' => $imageUrl,
@@ -1325,7 +1328,7 @@ class ProductsDownload
                 // Actualizar stock y precio en la variante
                 $variante->stockfis = $productData['stock'];
                 $variante->precio = $productData['price']; // Precio SIN IVA
-                $variante->coste = 0;
+                $variante->coste = $productData['wholesale_price'] ?? 0;
 
                 if (!$variante->save()) {
                     Tools::log()->error("Error actualizando stock de variante: {$reference}");
@@ -1433,7 +1436,7 @@ class ProductsDownload
                 $variante->referencia = $reference;
                 $variante->stockfis = $productData['stock'];
                 $variante->precio = $productData['price'];
-                $variante->coste = 0;
+                $variante->coste = $productData['wholesale_price'] ?? 0;
 
                 if (!$variante->save()) {
                     Tools::log()->critical("✗✗✗ ERROR guardando variante");
@@ -1638,8 +1641,9 @@ class ProductsDownload
                 return false;
             }
 
-            // Actualizar precio en variante
+            // Actualizar precio y coste en variante
             $variante->precio = $price;
+            $variante->coste = $productData['wholesale_price'] ?? 0;
 
             if (!$variante->save()) {
                 Tools::log()->error("Error actualizando precio de variante: {$reference}");
@@ -1693,9 +1697,10 @@ class ProductsDownload
                 return false;
             }
 
-            // Actualizar stock y precio en variante
+            // Actualizar stock, precio y coste en variante
             $variante->stockfis = $stock;
             $variante->precio = $price;
+            $variante->coste = $productData['wholesale_price'] ?? 0;
 
             if (!$variante->save()) {
                 Tools::log()->error("Error actualizando variante: {$reference}");
