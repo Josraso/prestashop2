@@ -222,6 +222,49 @@
                                     </div>
                                 </div>
 
+                                {# ── Facturas simplificadas ── #}
+                                <div class="card border-info mt-3 mb-2">
+                                    <div class="card-header bg-info text-white py-2">
+                                        <strong>Facturas Simplificadas (≤ umbral)</strong>
+                                        <small class="d-block">Pedidos por debajo del importe indicado se asignan al cliente "Consumidor Final" y a la serie simplificada. Deja el importe en 0 para desactivar.</small>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label" for="importe_simplificada">
+                                                Importe máximo (IVA incl.)
+                                            </label>
+                                            <div class="col-sm-4">
+                                                <div class="input-group">
+                                                    <input type="number" name="importe_simplificada" id="importe_simplificada"
+                                                           class="form-control" min="0" step="0.01"
+                                                           value="{{ fsc.config.importe_simplificada|default(0) }}"
+                                                           placeholder="0 = desactivado">
+                                                    <div class="input-group-append">
+                                                        <span class="input-group-text">€</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row mb-0">
+                                            <label class="col-sm-4 col-form-label" for="serie_simplificada">
+                                                Serie simplificada online
+                                            </label>
+                                            <div class="col-sm-4">
+                                                <select name="serie_simplificada" id="serie_simplificada" class="form-control">
+                                                    <option value="">— ninguna (desactivado) —</option>
+                                                    {% for serie in fsc.series %}
+                                                        <option value="{{ serie.codserie }}"
+                                                                {% if serie.codserie == fsc.config.serie_simplificada %}selected{% endif %}>
+                                                            {{ serie.codserie }} – {{ serie.descripcion }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {# ── fin Facturas simplificadas ── #}
+
                                 <div class="form-group row">
                                     <label class="col-sm-3 col-form-label" for="idioma_productos">
                                         Idioma de Productos <span class="text-danger">*</span>

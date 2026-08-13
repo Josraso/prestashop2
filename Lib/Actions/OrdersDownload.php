@@ -292,7 +292,36 @@ class OrdersDownload
             throw new \Exception("Pedido {$orderId} sin cliente ({$customerId}) o dirección ({$addressId}) válidos");
         }
 
-        $cliente = $this->getOrCreateCliente($customerId, $addressId);
+        // Decidir si este pedido va como factura simplificada (importe <= umbral configurado)
+        $totalConIva = (float)$orderXml->total_paid_tax_incl;
+        $usarSimplificada = $this->config->isSimplificadaEnabled() && $totalConIva <= $this->config->importe_simplificada;
+
+        if ($usarSimplificada) {
+            // Obtener nombre real del cliente de PrestaShop para dejarlo en observaciones
+            $nombreRealCliente = '';
+            $customerXml = $this->connection->getCustomer($customerId);
+            if ($customerXml) {
+                $nombreRealCliente = trim((string)$customerXml->firstname . ' ' . (string)$customerXml->lastname);
+            }
+
+            // Usar cliente ficticio "Consumidor Final" (identificado por NIF fijo 00000000T)
+            $clienteSimplificado = new \FacturaScripts\Dinamic\Model\Cliente();
+            $where = [new \FacturaScripts\Core\Base\DataBase\DataBaseWhere('cifnif', '00000000T')];
+            if (!$clienteSimplificado->loadFromCode('', $where)) {
+                // Si fue borrado por error, lo recreamos automáticamente
+                $clienteSimplificado->nombre = 'Consumidor Final';
+                $clienteSimplificado->razonsocial = 'Consumidor Final';
+                $clienteSimplificado->cifnif = '00000000T';
+                $clienteSimplificado->personafisica = true;
+                $clienteSimplificado->save();
+            }
+            $cliente = $clienteSimplificado;
+            Tools::log()->info("Factura simplificada: pedido {$orderId} ({$totalConIva}€ <= {$this->config->importe_simplificada}€) → cliente Consumidor Final + serie {$this->config->serie_simplificada}");
+        } else {
+            $nombreRealCliente = '';
+            $cliente = $this->getOrCreateCliente($customerId, $addressId);
+        }
+
         if (!$cliente) {
             throw new \Exception("No se pudo obtener o crear el cliente para el pedido {$orderId}");
         }
@@ -314,9 +343,9 @@ class OrdersDownload
 
         $albaran->codalmacen = $this->config->codalmacen;
 
-        // Obtener serie según el estado del pedido (si está mapeado)
+        // Obtener serie según el estado del pedido (si está mapeado), salvo que sea simplificada
         $currentState = (int)$orderXml->current_state;
-        $albaran->codserie = $this->config->getSerieForEstado($currentState);
+        $albaran->codserie = $usarSimplificada ? $this->config->serie_simplificada : $this->config->getSerieForEstado($currentState);
 
         // IMPORTANTE: Usar la fecha del ÚLTIMO estado del pedido, no la fecha de creación
         $lastStatusDate = $this->getLastOrderStatusDate($orderXml, $orderId);
@@ -332,7 +361,12 @@ class OrdersDownload
         }
 
         $albaran->numero2 = $orderReference; // Guardamos el número de pedido de PrestaShop en numero2
-        $albaran->observaciones = "Importado de PrestaShop. ID: {$orderId}";
+
+        if ($usarSimplificada && !empty($nombreRealCliente)) {
+            $albaran->observaciones = "Importado de PrestaShop. ID: {$orderId} | Cliente PS: {$customerId} - {$nombreRealCliente}";
+        } else {
+            $albaran->observaciones = "Importado de PrestaShop. ID: {$orderId}";
+        }
 
         // Asignar forma de pago según mapeo
         $paymentModule = (string)$orderXml->payment;

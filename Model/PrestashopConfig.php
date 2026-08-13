@@ -73,6 +73,12 @@ class PrestashopConfig extends ModelClass
     /** @var string Mapeo JSON de estados a series. Ej: {"2":"GENERAL","5":"VENFIS"} */
     public $estados_series;
 
+    /** @var float */
+    public $importe_simplificada;
+
+    /** @var string */
+    public $serie_simplificada;
+
     public static function primaryColumn(): string
     {
         return 'id';
@@ -105,6 +111,8 @@ class PrestashopConfig extends ModelClass
 
         // Mapeo de estados a series (JSON)
         $this->estados_series = ''; // Por defecto vacío, usa codserie
+        $this->importe_simplificada = 0;
+        $this->serie_simplificada = null;
     }
 
     /**
@@ -195,6 +203,14 @@ class PrestashopConfig extends ModelClass
         }
 
         $this->estados_series = empty($cleaned) ? '' : json_encode($cleaned);
+    }
+
+    /**
+     * Devuelve true si la facturación simplificada está configurada y activa
+     */
+    public function isSimplificadaEnabled(): bool
+    {
+        return $this->importe_simplificada > 0 && !empty($this->serie_simplificada);
     }
 
     /**

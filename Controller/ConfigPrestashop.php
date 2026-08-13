@@ -172,6 +172,8 @@ class ConfigPrestashop extends Controller
         $this->config->import_since_id = (int)$this->request->request->get('import_since_id', 0);
         $this->config->import_since_date = $this->request->request->get('import_since_date', '');
         $this->config->idioma_productos = (int)$this->request->request->get('idioma_productos', 1);
+        $this->config->importe_simplificada = (float)$this->request->request->get('importe_simplificada', 0);
+        $this->config->serie_simplificada = $this->request->request->get('serie_simplificada', '') ?: null;
 
         // Configuración de base de datos para ecotax
         $this->config->use_db_for_ecotax = (bool)$this->request->request->get('use_db_for_ecotax', false);

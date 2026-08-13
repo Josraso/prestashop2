@@ -3,6 +3,7 @@
 namespace FacturaScripts\Plugins\Prestashop\Extension\Controller;
 
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
+use FacturaScripts\Dinamic\Model\Cliente;
 use FacturaScripts\Dinamic\Model\Producto;
 use FacturaScripts\Dinamic\Model\Variante;
 
@@ -26,6 +27,9 @@ class Installer
         $this->createGiftWrappingProduct();
         $this->createEcotaxProduct();
 
+        // Crear cliente "Consumidor Final" para facturas simplificadas
+        $this->createConsumidorFinalCliente();
+
         \FacturaScripts\Core\Tools::log()->info("✓ Instalación del plugin PrestaShop completada");
     }
 
@@ -43,6 +47,9 @@ class Installer
         $this->createShippingProduct();
         $this->createGiftWrappingProduct();
         $this->createEcotaxProduct();
+
+        // Crear cliente "Consumidor Final" para facturas simplificadas si no existe
+        $this->createConsumidorFinalCliente();
 
         \FacturaScripts\Core\Tools::log()->info("✓ Verificación de actualizaciones completada");
     }
@@ -81,7 +88,9 @@ class Installer
             'db_user' => "VARCHAR(100)",
             'db_password' => "VARCHAR(255)",
             'db_prefix' => "VARCHAR(20)",
-            'use_db_for_ecotax' => "BOOLEAN"
+            'use_db_for_ecotax' => "BOOLEAN",
+            'importe_simplificada' => "DOUBLE PRECISION NOT NULL DEFAULT 0",
+            'serie_simplificada' => "VARCHAR(4)"
         ];
 
         $columnasCreadas = 0;
@@ -231,6 +240,29 @@ class Installer
             }
         } else {
             \FacturaScripts\Core\Tools::log()->error("✗ Error al crear producto 'Ecotasa NFU'");
+        }
+    }
+
+    private function createConsumidorFinalCliente(): void
+    {
+        $cliente = new Cliente();
+        $where = [new DataBaseWhere('cifnif', '00000000T')];
+
+        if ($cliente->loadFromCode('', $where)) {
+            \FacturaScripts\Core\Tools::log()->info("✓ Cliente 'Consumidor Final' ya existe (00000000T)");
+            return;
+        }
+
+        $cliente->nombre = 'Consumidor Final';
+        $cliente->razonsocial = 'Consumidor Final';
+        $cliente->cifnif = '00000000T';
+        $cliente->personafisica = true;
+        $cliente->email = '';
+
+        if ($cliente->save()) {
+            \FacturaScripts\Core\Tools::log()->info("✓ Cliente 'Consumidor Final' creado (NIF: 00000000T) - NO BORRAR: usado para facturas simplificadas automáticas");
+        } else {
+            \FacturaScripts\Core\Tools::log()->error("✗ Error al crear cliente 'Consumidor Final'");
         }
     }
 }
